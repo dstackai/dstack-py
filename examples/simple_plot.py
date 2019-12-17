@@ -5,7 +5,7 @@ from dstack.matplotlib_handler import MatplotlibHandler
 
 
 if __name__ == '__main__':
-    frame = StackFrame(name='plots/simple_plot',
+    frame = StackFrame(stack_name='plots/simple_plot',
                        user='user',
                        token='token').register(MatplotlibHandler())
 

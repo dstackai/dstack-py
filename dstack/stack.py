@@ -3,8 +3,7 @@ import io
 import json
 from typing import Dict, List
 from uuid import uuid4
-
-from dstack.version import Version
+from abc import ABC
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -20,22 +19,21 @@ class FrameData:
         self.media_type = media_type
 
 
-class Handler:
+class Handler(ABC):
+    IMAGE_PNG = "image/png"
+
     def accept(self, obj) -> bool:
-        return False
+        pass
 
     def as_frame(self, obj, description: str, params: Dict) -> FrameData:
         pass
 
 
-class EncryptionMethod:
+class EncryptionMethod(ABC):
     def encrypt(self, frame: FrameData) -> FrameData:
         pass
 
-    def name(self) -> str:
-        pass
-
-    def version(self) -> Version:
+    def info(self) -> Dict:
         pass
 
 
@@ -43,32 +41,28 @@ class NoEncryption(EncryptionMethod):
     def encrypt(self, frame: FrameData) -> FrameData:
         return frame
 
-    def name(self) -> str:
-        return "no_encryption"
-
-    def version(self) -> Version:
-        return Version(1, 0, 0)
+    def info(self) -> Dict:
+        return {}
 
 
 class StackFrame(object):
     def __init__(self,
-                 name: str,
+                 stack_name: str,
                  user: str,
                  token: str,
                  auto_push: bool = False,
                  server: str = "api.dstack.ai",
-                 encryption_method: EncryptionMethod = NoEncryption()):
-        self.stack_name = name
+                 encryption: EncryptionMethod = NoEncryption()):
+        self.stack_name = stack_name
         self.user = user
         self.token = token
         self.auto_push = auto_push
         self.server = server
-        self.encryption_method = encryption_method
+        self.encryption_method = encryption
         self.id = uuid4().__str__()
         self.index = 0
         self.handlers: List[Handler] = []
         self.data: List[FrameData] = []
-        pass
 
     def commit(self, obj, description: str, params: Dict):
         for handler in self.handlers:
@@ -99,7 +93,16 @@ class StackFrame(object):
         return self
 
     def create_frame(self) -> Dict:
-        return {"name": self.stack_name, "user": self.user, "token": self.token, "id": self.id, "data": []}
+        data = {"stack_name": self.stack_name,
+                "user": self.user,
+                "token": self.token,
+                "id": self.id,
+                "data": []}
+
+        if self.encryption_method is not NoEncryption:
+            data["encryption"] = self.encryption_method.info()
+
+        return data
 
     def send(self, frame: Dict):
         print(json.dumps(frame, indent=2))
