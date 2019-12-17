@@ -15,4 +15,7 @@ class MatplotlibHandler(Handler):
         fig: Figure = obj
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
-        return FrameData(buf, description, params, self.IMAGE_PNG)
+        return FrameData(buf, description, params)
+
+    def media_type(self) -> str:
+        return self.IMAGE_PNG

@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import time
 from typing import Dict, List
 from uuid import uuid4
 from abc import ABC
@@ -12,11 +13,10 @@ class UnsupportedObjectTypeException(Exception):
 
 
 class FrameData:
-    def __init__(self, buf: io.BytesIO, description: str, params: Dict, media_type: str):
+    def __init__(self, buf: io.BytesIO, description: str, params: Dict):
         self.buf = str(base64.b64encode(buf.getvalue()))[2:-1]
         self.description = description
         self.params = params
-        self.media_type = media_type
 
 
 class Handler(ABC):
@@ -26,6 +26,9 @@ class Handler(ABC):
         pass
 
     def as_frame(self, obj, description: str, params: Dict) -> FrameData:
+        pass
+
+    def media_type(self) -> str:
         pass
 
 
@@ -47,38 +50,42 @@ class NoEncryption(EncryptionMethod):
 
 class StackFrame(object):
     def __init__(self,
-                 stack_name: str,
-                 user: str,
+                 stack: str,
                  token: str,
+                 handler: Handler,
                  auto_push: bool = False,
                  server: str = "api.dstack.ai",
                  encryption: EncryptionMethod = NoEncryption()):
-        self.stack_name = stack_name
-        self.user = user
+        self.stack = stack
         self.token = token
         self.auto_push = auto_push
         self.server = server
         self.encryption_method = encryption
         self.id = uuid4().__str__()
         self.index = 0
-        self.handlers: List[Handler] = []
+        self.handler = handler
+        self.timestamp = time.time_ns()
         self.data: List[FrameData] = []
 
     def commit(self, obj, description: str, params: Dict):
-        for handler in self.handlers:
-            if handler.accept(obj):
-                data = handler.as_frame(obj, description, params)
-                encrypted_data = self.encryption_method.encrypt(data)
-                self.data.append(encrypted_data)
-                if self.auto_push:
-                    self.push_data(encrypted_data)
-                return
-        raise UnsupportedObjectTypeException(obj)
+        if self.handler.accept(obj):
+            data = self.handler.as_frame(obj, description, params)
+            encrypted_data = self.encryption_method.encrypt(data)
+            self.data.append(encrypted_data)
+            if self.auto_push:
+                self.push_data(encrypted_data)
+            return
+        else:
+            raise UnsupportedObjectTypeException(obj)
 
     def push(self):
         if not self.auto_push:
             frame = self.create_frame()
             frame["data"] = [x.__dict__ for x in self.data]
+            self.send(frame)
+        else:
+            frame = self.create_frame()
+            frame["total"] = self.index
             self.send(frame)
 
     def push_data(self, data: FrameData):
@@ -88,18 +95,14 @@ class StackFrame(object):
         self.index += 1
         self.send(frame)
 
-    def register(self, handler):
-        self.handlers.append(handler)
-        return self
-
     def create_frame(self) -> Dict:
-        data = {"stack_name": self.stack_name,
-                "user": self.user,
+        data = {"stack": self.stack,
                 "token": self.token,
                 "id": self.id,
-                "data": []}
+                "timestamp": self.timestamp,
+                "type": self.handler.media_type()}
 
-        if self.encryption_method is not NoEncryption:
+        if not isinstance(self.encryption_method, NoEncryption):
             data["encryption"] = self.encryption_method.info()
 
         return data

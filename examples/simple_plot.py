@@ -5,9 +5,9 @@ from dstack.matplotlib_handler import MatplotlibHandler
 
 
 if __name__ == '__main__':
-    frame = StackFrame(stack_name='plots/simple_plot',
-                       user='user',
-                       token='token').register(MatplotlibHandler())
+    frame = StackFrame(stack='plots/simple_plot',
+                       token='token',
+                       handler=MatplotlibHandler())
 
     p = np.arange(0.0, 1.0, 0.1)
     for phase in p:
