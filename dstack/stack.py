@@ -1,10 +1,11 @@
 import base64
 import io
-import json
 import time
 from typing import Dict, List
 from uuid import uuid4
 from abc import ABC
+
+from dstack.protocol import Protocol, JsonProtocol
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -54,12 +55,12 @@ class StackFrame(object):
                  token: str,
                  handler: Handler,
                  auto_push: bool = False,
-                 server: str = "api.dstack.ai",
+                 protocol: Protocol = JsonProtocol("api.dstack.ai"),
                  encryption: EncryptionMethod = NoEncryption()):
         self.stack = stack
         self.token = token
         self.auto_push = auto_push
-        self.server = server
+        self.protocol = protocol
         self.encryption_method = encryption
         self.id = uuid4().__str__()
         self.index = 0
@@ -67,7 +68,7 @@ class StackFrame(object):
         self.timestamp = time.time_ns()
         self.data: List[FrameData] = []
 
-    def commit(self, obj, description: str, params: Dict):
+    def commit(self, obj, description: str, params: Dict = {}):
         if self.handler.accept(obj):
             data = self.handler.as_frame(obj, description, params)
             encrypted_data = self.encryption_method.encrypt(data)
@@ -108,7 +109,8 @@ class StackFrame(object):
         return data
 
     def send(self, frame: Dict):
-        print(json.dumps(frame, indent=2))
+        self.protocol.send(frame)
+        # print(json.dumps(frame, indent=2))
         # print(frame["data"][0])
 
     pass

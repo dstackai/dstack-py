@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from dstack.stack import StackFrame
-from dstack.matplotlib_handler import MatplotlibHandler
+from dstack.matplotlib import MatplotlibHandler
 
 
 if __name__ == '__main__':
