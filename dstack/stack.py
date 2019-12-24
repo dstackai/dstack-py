@@ -13,9 +13,22 @@ class UnsupportedObjectTypeException(Exception):
         self.obj = obj
 
 
+class ServerException(Exception):
+    def __init__(self, status: int, message: str):
+        self.status = status
+        self.message = message
+
+
+class AccessDeniedException(ServerException):
+    ACCESS_DENIED_STATUS_CODE = 1
+
+    def __init__(self, message: str):
+        super(AccessDeniedException, self).__init__(self.ACCESS_DENIED_STATUS_CODE, message)
+
+
 class FrameData:
-    def __init__(self, buf: io.BytesIO, description: str, params: Dict):
-        self.buf = str(base64.b64encode(buf.getvalue()))[2:-1]
+    def __init__(self, data: io.BytesIO, description: str, params: Dict):
+        self.data = str(base64.b64encode(data.getvalue()))[2:-1]
         self.description = description
         self.params = params
 
@@ -54,9 +67,9 @@ class StackFrame(object):
                  stack: str,
                  token: str,
                  handler: Handler,
-                 auto_push: bool = False,
-                 protocol: Protocol = JsonProtocol("api.dstack.ai"),
-                 encryption: EncryptionMethod = NoEncryption()):
+                 auto_push: bool,
+                 protocol: Protocol,
+                 encryption: EncryptionMethod):
         self.stack = stack
         self.token = token
         self.auto_push = auto_push
@@ -81,22 +94,22 @@ class StackFrame(object):
 
     def push(self):
         if not self.auto_push:
-            frame = self.create_frame()
-            frame["data"] = [x.__dict__ for x in self.data]
-            self.send(frame)
+            frame = self.new_frame()
+            frame["attachments"] = [x.__dict__ for x in self.data]
+            self.send_push(frame)
         else:
-            frame = self.create_frame()
+            frame = self.new_frame()
             frame["total"] = self.index
-            self.send(frame)
+            self.send_push(frame)
 
     def push_data(self, data: FrameData):
-        frame = self.create_frame()
+        frame = self.new_frame()
         frame["index"] = self.index
-        frame["data"][0] = data.__dict__
+        frame["attachments"][0] = data.__dict__
         self.index += 1
-        self.send(frame)
+        self.send_push(frame)
 
-    def create_frame(self) -> Dict:
+    def new_frame(self) -> Dict:
         data = {"stack": self.stack,
                 "token": self.token,
                 "id": self.id,
@@ -108,9 +121,24 @@ class StackFrame(object):
 
         return data
 
-    def send(self, frame: Dict):
-        self.protocol.send(frame)
-        # print(json.dumps(frame, indent=2))
-        # print(frame["data"][0])
+    def send_access(self):
+        req = {"stack": self.stack, "token": self.token}
+        res = self.protocol.send("/stacks/access", req)
+        if res["status"] != 0:
+            raise AccessDeniedException(res["message"])
 
-    pass
+    def send_push(self, frame: Dict):
+        res = self.protocol.send("/stacks/push", frame)
+        if res["status"] != 0:
+            raise ServerException(res["status"], res["message"])
+
+
+def create_frame(stack: str,
+                 token: str,
+                 handler: Handler,
+                 auto_push: bool = False,
+                 protocol: Protocol = JsonProtocol("https://api.dstack.ai"),
+                 encryption: EncryptionMethod = NoEncryption()) -> StackFrame:
+    frame = StackFrame(stack, token, handler, auto_push, protocol, encryption)
+    frame.send_access()
+    return frame

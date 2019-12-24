@@ -6,7 +6,7 @@ from typing import Dict, Callable
 
 from dstack.matplotlib import MatplotlibHandler
 from dstack.protocol import Protocol
-from dstack.stack import StackFrame
+from dstack.stack import create_frame
 
 
 class TestProtocol(Protocol):
@@ -14,7 +14,7 @@ class TestProtocol(Protocol):
         self.exception = None
         self.handler = handler
 
-    def send(self, data: Dict) -> Dict:
+    def send(self, endpoint: str, data: Dict) -> Dict:
         if self.exception is not None:
             raise self.exception
         else:
@@ -30,10 +30,10 @@ class TestProtocol(Protocol):
 class StackFrameTest(unittest.TestCase):
     def test_single_plot(self):
         protocol = self.setup_protocol()
-        frame = StackFrame(stack='plots/simple_plot',
-                           token='token',
-                           handler=MatplotlibHandler(),
-                           protocol=protocol)
+        frame = create_frame(stack='plots/simple_plot',
+                             token='token',
+                             handler=MatplotlibHandler(),
+                             protocol=protocol)
 
         t = np.arange(0.0, 2.0, 0.01)
         s = 1 + np.sin(2 * np.pi * t)
