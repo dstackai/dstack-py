@@ -1,21 +1,15 @@
 import io
 
-from typing import Dict
-
-from matplotlib.figure import Figure
+from typing import Dict, Optional
 
 from dstack.stack import Handler, FrameData
 
 
 class MatplotlibHandler(Handler):
-    def accept(self, obj) -> bool:
-        return isinstance(obj, Figure)
-
-    def as_frame(self, obj, description: str, params: Dict) -> FrameData:
-        fig: Figure = obj
+    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         buf = io.BytesIO()
-        fig.savefig(buf, format='png')
-        return FrameData(buf, description, params)
+        obj.savefig(buf, format="svg")
+        return FrameData(buf, description, params, None)
 
     def media_type(self) -> str:
-        return self.IMAGE_PNG
+        return self.IMAGE_SVG

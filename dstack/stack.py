@@ -1,7 +1,7 @@
 import base64
 import io
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import uuid4
 from abc import ABC
 
@@ -27,19 +27,22 @@ class AccessDeniedException(ServerException):
 
 
 class FrameData:
-    def __init__(self, data: io.BytesIO, description: str, params: Dict):
+    def __init__(self, data: io.BytesIO,
+                 description: Optional[str],
+                 params: Optional[Dict],
+                 libraries: Optional[List[str]]):
         self.data = str(base64.b64encode(data.getvalue()))[2:-1]
         self.description = description
         self.params = params
+        self.libraries = libraries
 
 
 class Handler(ABC):
     IMAGE_PNG = "image/png"
+    IMAGE_SVG = "image/svg"
+    TEXT_HTML = "text/html"
 
-    def accept(self, obj) -> bool:
-        pass
-
-    def as_frame(self, obj, description: str, params: Dict) -> FrameData:
+    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         pass
 
     def media_type(self) -> str:
@@ -81,21 +84,18 @@ class StackFrame(object):
         self.timestamp = time.time_ns()
         self.data: List[FrameData] = []
 
-    def commit(self, obj, description: str, params: Dict = {}):
-        if self.handler.accept(obj):
-            data = self.handler.as_frame(obj, description, params)
-            encrypted_data = self.encryption_method.encrypt(data)
-            self.data.append(encrypted_data)
-            if self.auto_push:
-                self.push_data(encrypted_data)
-            return
-        else:
-            raise UnsupportedObjectTypeException(obj)
+    def commit(self, obj, description: Optional[str], params: Optional[Dict] = None):
+        data = self.handler.as_frame(obj, description, params)
+        encrypted_data = self.encryption_method.encrypt(data)
+        self.data.append(encrypted_data)
+        if self.auto_push:
+            self.push_data(encrypted_data)
+        return
 
     def push(self):
         if not self.auto_push:
             frame = self.new_frame()
-            frame["attachments"] = [x.__dict__ for x in self.data]
+            frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
             self.send_push(frame)
         else:
             frame = self.new_frame()
@@ -105,7 +105,7 @@ class StackFrame(object):
     def push_data(self, data: FrameData):
         frame = self.new_frame()
         frame["index"] = self.index
-        frame["attachments"][0] = data.__dict__
+        frame["attachments"][0] = filter_none(data.__dict__)
         self.index += 1
         self.send_push(frame)
 
@@ -131,6 +131,12 @@ class StackFrame(object):
         res = self.protocol.send("/stacks/push", frame)
         if res["status"] != 0:
             raise ServerException(res["status"], res["message"])
+
+
+def filter_none(d):
+    if isinstance(d, Dict):
+        return {k: filter_none(v) for k, v in d.items() if v is not None}
+    return d
 
 
 def create_frame(stack: str,
