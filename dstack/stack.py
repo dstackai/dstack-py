@@ -29,18 +29,16 @@ class AccessDeniedException(ServerException):
 class FrameData:
     def __init__(self, data: io.BytesIO,
                  description: Optional[str],
-                 params: Optional[Dict],
-                 libraries: Optional[List[str]]):
+                 params: Optional[Dict]):
         self.data = str(base64.b64encode(data.getvalue()))[2:-1]
         self.description = description
         self.params = params
-        self.libraries = libraries
 
 
 class Handler(ABC):
     IMAGE_PNG = "image/png"
     IMAGE_SVG = "image/svg"
-    TEXT_HTML = "text/html"
+    PLOTLY = "plotly"
 
     def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         pass
@@ -93,12 +91,11 @@ class StackFrame(object):
         return
 
     def push(self):
+        frame = self.new_frame()
         if not self.auto_push:
-            frame = self.new_frame()
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
             self.send_push(frame)
         else:
-            frame = self.new_frame()
             frame["total"] = self.index
             self.send_push(frame)
 
