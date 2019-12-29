@@ -19,13 +19,6 @@ class ServerException(Exception):
         self.message = message
 
 
-class AccessDeniedException(ServerException):
-    ACCESS_DENIED_STATUS_CODE = 1
-
-    def __init__(self, message: str):
-        super(AccessDeniedException, self).__init__(self.ACCESS_DENIED_STATUS_CODE, message)
-
-
 class FrameData:
     def __init__(self, data: io.BytesIO,
                  description: Optional[str],
@@ -121,13 +114,16 @@ class StackFrame(object):
     def send_access(self):
         req = {"stack": self.stack, "token": self.token}
         res = self.protocol.send("/stacks/access", req)
-        if res["status"] != 0:
-            raise AccessDeniedException(res["message"])
+        check_error(res)
 
     def send_push(self, frame: Dict):
         res = self.protocol.send("/stacks/push", frame)
-        if res["status"] != 0:
-            raise ServerException(res["status"], res["message"])
+        check_error(res)
+
+
+def check_error(res: Dict):
+    if res["status"] != 0:
+        raise ServerException(res["status"], res["message"])
 
 
 def filter_none(d):

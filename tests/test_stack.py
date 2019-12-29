@@ -20,7 +20,7 @@ class TestProtocol(Protocol):
         else:
             return self.handler(data)
 
-    def broke(self, exception: Exception):
+    def broke(self, exception: Exception = RuntimeError()):
         self.exception = exception
 
     def fix(self):
@@ -28,33 +28,51 @@ class TestProtocol(Protocol):
 
 
 class StackFrameTest(unittest.TestCase):
-    def test_single_plot(self):
-        protocol = self.setup_protocol()
-        frame = create_frame(stack='plots/simple_plot',
-                             token='token',
-                             handler=MatplotlibHandler(),
-                             protocol=protocol)
+    def test_cant_send_access(self):
+        protocol = TestProtocol(self.handler)
+        protocol.broke()
+        try:
+            self.setup_frame(protocol, stack="plots/my_plot")
+            self.fail("Error must be raised in send_access()")
+        except RuntimeError:
+            pass
 
+    def test_single_plot(self):
+        protocol = TestProtocol(self.handler)
+        frame = self.setup_frame(protocol, stack="plots/my_plot")
         t = np.arange(0.0, 2.0, 0.01)
         s = 1 + np.sin(2 * np.pi * t)
 
         fig, ax = plt.subplots()
         ax.plot(t, s)
 
-        ax.set(xlabel='t', ylabel='x',
-               title='My first plot')
+        ax.set(xlabel="t", ylabel="x", title="My first plot")
         ax.grid()
 
-        frame.commit(fig, 'My first plot')
+        my_desc = "My first plot"
+        frame.commit(fig, my_desc)
         frame.push()
 
-    @staticmethod
-    def setup_protocol() -> Protocol:
-        def handler(data: Dict) -> Dict:
-            print(json.dumps(data, indent=2))
-            return {"status": 0}
+        attachments = self.data["attachments"]
+        self.assertEqual("plots/my_plot", self.data["stack"])
+        self.assertIsNotNone(self.data["id"])
+        self.assertEqual("image/svg", self.data["type"])
+        self.assertEqual("my_token", self.data["token"])
+        self.assertEqual(1, len(attachments))
+        self.assertFalse("params" in attachments[0].keys())
+        self.assertEquals(my_desc, attachments[0]["description"])
 
-        return TestProtocol(handler)
+    def handler(self, data: Dict) -> Dict:
+        self.data = data
+        print(json.dumps(data, indent=2))
+        return {"status": 0}
+
+    @staticmethod
+    def setup_frame(protocol: Protocol, stack: str):
+        return create_frame(stack=stack,
+                            token='my_token',
+                            handler=MatplotlibHandler(),
+                            protocol=protocol)
 
 
 if __name__ == '__main__':
