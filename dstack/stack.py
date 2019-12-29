@@ -75,7 +75,7 @@ class StackFrame(object):
         self.timestamp = time.time_ns()
         self.data: List[FrameData] = []
 
-    def commit(self, obj, description: Optional[str], params: Optional[Dict] = None):
+    def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None):
         data = self.handler.as_frame(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)

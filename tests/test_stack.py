@@ -42,14 +42,11 @@ class StackFrameTest(unittest.TestCase):
         frame = self.setup_frame(protocol, stack="plots/my_plot")
         t = np.arange(0.0, 2.0, 0.01)
         s = 1 + np.sin(2 * np.pi * t)
-
         fig, ax = plt.subplots()
         ax.plot(t, s)
-
-        ax.set(xlabel="t", ylabel="x", title="My first plot")
-        ax.grid()
-
         my_desc = "My first plot"
+        ax.set(xlabel="t", ylabel="x", title=my_desc)
+        ax.grid()
         frame.commit(fig, my_desc)
         frame.push()
 
@@ -59,8 +56,41 @@ class StackFrameTest(unittest.TestCase):
         self.assertEqual("image/svg", self.data["type"])
         self.assertEqual("my_token", self.data["token"])
         self.assertEqual(1, len(attachments))
-        self.assertFalse("params" in attachments[0].keys())
-        self.assertEquals(my_desc, attachments[0]["description"])
+        self.assertNotIn("params", attachments[0].keys())
+        self.assertEqual(my_desc, attachments[0]["description"])
+
+    def test_multiple_plots(self):
+        protocol = TestProtocol(self.handler)
+        frame = self.setup_frame(protocol, stack="plots/my_plot")
+        p = np.arange(0.0, 1.0, 0.1)
+
+        for idx, phase in enumerate(p):
+            t = np.arange(0.0, 2.0, 0.01)
+            s = 1 + np.sin(2 * np.pi * t + phase)
+            fig, ax = plt.subplots()
+            ax.plot(t, s)
+            ax.set(xlabel="t", ylabel="x", title="Plot with parameters")
+            ax.grid()
+            frame.commit(fig, params={"phase": phase, "index": idx})
+
+        frame.push()
+        attachments = self.data["attachments"]
+        self.assertEqual(len(p), len(attachments))
+        for idx, phase in enumerate(p):
+            att = attachments[idx]
+            self.assertNotIn("description", att.keys())
+            self.assertEqual(2, len(att["params"].keys()))
+            self.assertEqual(idx, att["params"]["index"])
+            self.assertEqual(phase, att["params"]["phase"])
+
+    def test_cant_send_push(self):
+        pass
+
+    def test_auto_push(self):
+        pass
+
+    def test_cant_send_auto_push(self):
+        pass
 
     def handler(self, data: Dict) -> Dict:
         self.data = data
