@@ -3,8 +3,9 @@ import io
 import time
 from typing import Dict, List, Optional
 from uuid import uuid4
-from abc import ABC
+from abc import ABC, abstractmethod
 
+from dstack.config import from_yaml_file, Config
 from dstack.protocol import Protocol, JsonProtocol
 
 
@@ -33,17 +34,21 @@ class Handler(ABC):
     IMAGE_SVG = "image/svg"
     PLOTLY = "plotly"
 
+    @abstractmethod
     def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         pass
 
+    @abstractmethod
     def media_type(self) -> str:
         pass
 
 
 class EncryptionMethod(ABC):
+    @abstractmethod
     def encrypt(self, frame: FrameData) -> FrameData:
         pass
 
+    @abstractmethod
     def info(self) -> Dict:
         pass
 
@@ -133,11 +138,14 @@ def filter_none(d):
 
 
 def create_frame(stack: str,
-                 token: str,
                  handler: Handler,
+                 profile: str = "default",
                  auto_push: bool = False,
                  protocol: Protocol = JsonProtocol("https://api.dstack.ai"),
+                 config: Optional[Config] = None,
                  encryption: EncryptionMethod = NoEncryption()) -> StackFrame:
-    frame = StackFrame(stack, token, handler, auto_push, protocol, encryption)
+    if config is None:
+        config = from_yaml_file()
+    frame = StackFrame(stack, config.get_profile(profile).token, handler, auto_push, protocol, encryption)
     frame.send_access()
     return frame
