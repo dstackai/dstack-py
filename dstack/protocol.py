@@ -24,7 +24,6 @@ class JsonProtocol(Protocol):
         self.url = url
 
     def send(self, endpoint: str, data: Dict) -> Dict:
-        print(self.url + endpoint)
         req = request.Request(self.url + endpoint)
         req.add_header("Content-Type", "application/json; charset=utf-8")
         req.add_header("Authorization", f"Bearer {data['token']}")
