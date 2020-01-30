@@ -1,9 +1,9 @@
 import base64
 import io
 import time
+from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 from uuid import uuid4
-from abc import ABC, abstractmethod
 
 from dstack.config import from_yaml_file, Config
 from dstack.protocol import Protocol, JsonProtocol
@@ -12,12 +12,6 @@ from dstack.protocol import Protocol, JsonProtocol
 class UnsupportedObjectTypeException(Exception):
     def __init__(self, obj):
         self.obj = obj
-
-
-class ServerException(Exception):
-    def __init__(self, status: int, message: str):
-        self.status = status
-        self.message = message
 
 
 class FrameData:
@@ -86,16 +80,15 @@ class StackFrame(object):
         self.data.append(encrypted_data)
         if self.auto_push:
             self.push_data(encrypted_data)
-        return
 
-    def push(self):
+    def push(self) -> str:
         frame = self.new_frame()
         if not self.auto_push:
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
-            self.send_push(frame)
+            return self.send_push(frame)
         else:
             frame["total"] = self.index
-            self.send_push(frame)
+            return self.send_push(frame)
 
     def push_data(self, data: FrameData):
         frame = self.new_frame()
@@ -118,17 +111,11 @@ class StackFrame(object):
 
     def send_access(self):
         req = {"stack": self.stack, "token": self.token}
-        res = self.protocol.send("/stacks/access", req)
-        check_error(res)
+        self.protocol.send("/stacks/access", req)
 
-    def send_push(self, frame: Dict):
+    def send_push(self, frame: Dict) -> str:
         res = self.protocol.send("/stacks/push", frame)
-        check_error(res)
-
-
-def check_error(res: Dict):
-    if res["status"] != 0:
-        raise ServerException(res["status"], res["message"])
+        return res["url"]
 
 
 def filter_none(d):

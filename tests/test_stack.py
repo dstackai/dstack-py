@@ -1,8 +1,9 @@
 import json
 import unittest
+from typing import Dict, Callable, Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Dict, Callable, Optional, List
 
 from dstack.config import Config, Profile
 from dstack.matplotlib import MatplotlibHandler
@@ -118,7 +119,7 @@ class StackFrameTest(unittest.TestCase):
     def handler(self, data: Dict) -> Dict:
         self.data = data
         print(json.dumps(data, indent=2))
-        return {"status": 0}
+        return {"status": 0, "url": "https://api.dstack.ai/stacks/test/test"}
 
     @staticmethod
     def setup_frame(protocol: Protocol, stack: str):

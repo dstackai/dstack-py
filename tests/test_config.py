@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 from unittest import TestCase
+
 from yaml import dump
 
-from dstack.config import from_yaml_file, Config, Profile
+from dstack.config import from_yaml_file, Profile
 
 
 class TestYamlConfig(TestCase):

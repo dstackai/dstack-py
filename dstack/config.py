@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict
+
 import yaml
 
 
@@ -74,10 +75,10 @@ class YamlConfig(Config):
         return str(self.yaml_data)
 
 
-def from_yaml_file(use_global_settings: bool = False, dstack_dir: str = ".dstack") -> Config:
+def from_yaml_file(use_global_settings: Optional[bool] = None, dstack_dir: str = ".dstack") -> Config:
     path = local_path = Path(dstack_dir) / Path("config.yaml")
 
-    if use_global_settings or not path.exists():
+    if use_global_settings or (use_global_settings is None and not path.exists()):
         path = Path.home() / path
 
     if not path.exists():
