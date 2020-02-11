@@ -17,16 +17,19 @@ class UnsupportedObjectTypeException(Exception):
 class FrameData:
     def __init__(self, data: io.BytesIO,
                  description: Optional[str],
-                 params: Optional[Dict]):
+                 params: Optional[Dict],
+                 settings: Optional[Dict] = None):
         self.data = str(base64.b64encode(data.getvalue()))[2:-1]
         self.description = description
         self.params = params
+        self.settings = settings
 
 
 class Handler(ABC):
     IMAGE_PNG = "image/png"
     IMAGE_SVG = "image/svg"
     PLOTLY = "plotly"
+    BOKEH = "bokeh"
 
     @abstractmethod
     def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
