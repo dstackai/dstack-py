@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from dstack.config import from_yaml_file, Config
-from dstack.protocol import Protocol, JsonProtocol
+from dstack.protocol import Protocol
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -126,16 +125,3 @@ def filter_none(d):
         return {k: filter_none(v) for k, v in d.items() if v is not None}
     return d
 
-
-def create_frame(stack: str,
-                 handler: Handler,
-                 profile: str = "default",
-                 auto_push: bool = False,
-                 protocol: Protocol = JsonProtocol("https://api.dstack.ai"),
-                 config: Optional[Config] = None,
-                 encryption: EncryptionMethod = NoEncryption()) -> StackFrame:
-    if config is None:
-        config = from_yaml_file()
-    frame = StackFrame(stack, config.get_profile(profile).token, handler, auto_push, protocol, encryption)
-    frame.send_access()
-    return frame

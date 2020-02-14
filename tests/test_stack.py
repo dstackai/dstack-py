@@ -5,10 +5,10 @@ from typing import Dict, Callable, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+from dstack import create_frame
 from dstack.config import Config, Profile
 from dstack.matplotlib import MatplotlibHandler
 from dstack.protocol import Protocol
-from dstack.stack import create_frame
 
 
 class TestProtocol(Protocol):
