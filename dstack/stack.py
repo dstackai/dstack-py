@@ -8,11 +8,6 @@ from uuid import uuid4
 from dstack.protocol import Protocol
 
 
-class UnsupportedObjectTypeException(Exception):
-    def __init__(self, obj):
-        self.obj = obj
-
-
 class FrameData:
     def __init__(self, data: io.BytesIO,
                  description: Optional[str],

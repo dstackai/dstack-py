@@ -3,6 +3,11 @@ from typing import Optional, Dict
 from dstack.stack import Handler, FrameData
 
 
+class UnsupportedObjectTypeException(Exception):
+    def __init__(self, obj):
+        self.obj = obj
+
+
 class AutoHandler(Handler):
     def __init__(self):
         self.handler = None
@@ -18,6 +23,8 @@ class AutoHandler(Handler):
         elif tpe == "<class 'bokeh.plotting.figure.Figure'>":
             from dstack.bokeh import BokehHandler
             self.handler = BokehHandler()
+        else:
+            raise UnsupportedObjectTypeException(obj)
         return self.handler.as_frame(obj, description, params)
 
     def media_type(self) -> str:
