@@ -124,7 +124,7 @@ class StackFrameTest(unittest.TestCase):
     @staticmethod
     def setup_frame(protocol: Protocol, stack: str):
         config = TestConfig()
-        config.add_or_replace_profile(Profile("default", "my_token"))
+        config.add_or_replace_profile(Profile("default", "my_token", "https://api.dstack.ai"))
         return create_frame(stack=stack,
                             config=config,
                             handler=MatplotlibHandler(),

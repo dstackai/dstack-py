@@ -25,10 +25,10 @@ class JsonProtocol(Protocol):
 
     def send(self, endpoint: str, data: Dict) -> Dict:
         req = request.Request(self.url + endpoint)
-        req.add_header("Content-Type", "application/json; charset=utf-8")
+        req.add_header("Content-Type", f"application/json; charset={self.ENCODING}")
         req.add_header("Authorization", f"Bearer {data['token']}")
         del data["token"]
-        data_bytes = json.dumps(data).encode('utf-8')
+        data_bytes = json.dumps(data).encode(self.ENCODING)
         req.add_header("Content-Length", str(len(data_bytes)))
         try:
             response = request.urlopen(req, data_bytes)

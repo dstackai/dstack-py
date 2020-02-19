@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from yaml import dump
 
-from dstack.config import from_yaml_file, Profile
+from dstack.config import from_yaml_file, Profile, API_SERVER
 
 
 class TestYamlConfig(TestCase):
@@ -32,7 +32,7 @@ class TestYamlConfig(TestCase):
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         # shouldn't raise an exception
         conf.list_profiles()
-        conf.add_or_replace_profile(Profile("default", "test_token"))
+        conf.add_or_replace_profile(Profile("default", "test_token", API_SERVER))
         conf.save()
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         self.assertEqual(1, len(conf.list_profiles()))
