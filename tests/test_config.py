@@ -32,14 +32,14 @@ class TestYamlConfig(TestCase):
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         # shouldn't raise an exception
         conf.list_profiles()
-        conf.add_or_replace_profile(Profile("default", "test_token", API_SERVER))
+        conf.add_or_replace_profile(Profile("default", "user", "test_token", API_SERVER))
         conf.save()
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         self.assertEqual(1, len(conf.list_profiles()))
         self.assertEqual("test_token", conf.get_profile("default").token)
 
     def test_locate_config(self):
-        local_conf = {"profiles": {"my_profile": {"token": "my_token"}}}
+        local_conf = {"profiles": {"my_profile": {"token": "my_token", "user": "user"}}}
         global_conf = self.conf_example()
         self.create_yaml_file(self.global_path, global_conf)
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
@@ -67,7 +67,7 @@ class TestYamlConfig(TestCase):
 
     @staticmethod
     def conf_example() -> Dict:
-        return {"profiles": {"default": {"token": "token1"}, "other": {"token": "token2"}}}
+        return {"profiles": {"default": {"token": "token1", "user": "user"}, "other": {"token": "token2", "user": "user2"}}}
 
     def create_yaml_file(self, path: Path, content: Dict):
         content = dump(content)

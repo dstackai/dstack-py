@@ -5,26 +5,31 @@ from typing import Optional
 
 from dstack.config import from_yaml_file, Profile, API_SERVER
 
-ARG_NOT_SUPPLIED = "magic"
-
 
 def config(args: Namespace):
     conf = from_yaml_file(args.use_global_settings)
     if args.list:
-        print("list of available profiles:")
-        for p in conf.list_profiles():
-            print("\t" + p)
+        print("list of available profiles:\n")
+        profiles = conf.list_profiles()
+        for name in profiles:
+            profile = profiles[name]
+            print(name)
+            print(f"\tUser: {profile.user}")
+            print(f"\tToken: {show_token(profile.token)}")
+            print(f"\tServer: {profile.server}")
         return
 
     if args.profile is not None:
         profile = conf.get_profile(args.profile)
-        token = get_token(args, profile)
+        user = get_or_ask(args, profile, "user", "User: ", secure=False)
+        token = get_or_ask(args, profile, "token", "Token: ", secure=True)
         if profile is None:
-            profile = Profile(args.profile, token, args.server)
+            profile = Profile(args.profile, user, token, args.server)
         elif args.force or (token != profile.token and confirm(
                 f"Do you want to replace token for profile '{args.profile}'")):
             profile.token = token
-        profile.server = get_server(args, profile)
+        profile.server = args.server
+        profile.user = user
         conf.add_or_replace_profile(profile)
 
     if args.remove is not None:
@@ -34,6 +39,11 @@ def config(args: Namespace):
     conf.save()
 
 
+def show_token(token: str):
+    n = len(token)
+    return f"{'*' * (n - 4)}{token[-4:]}"
+
+
 def confirm(message: str) -> bool:
     reply = None
     while reply != "y" and reply != "n":
@@ -41,25 +51,17 @@ def confirm(message: str) -> bool:
     return reply == "y"
 
 
-def get_token(args: Namespace, profile: Optional[Profile]) -> str:
-    old_token = profile.token if profile is not None else None
-    if args.token is None:
-        return old_token
-    elif args.token != ARG_NOT_SUPPLIED:
-        return args.token
+def get_or_ask(args: Namespace, profile: Optional[Profile], field: str, prompt: str, secure: bool) -> str:
+    old_value = getattr(profile, field) if profile is not None else None
+    obj = getattr(args, field)
+    if obj is None:
+        value = None
+        while value is None:
+            value = getpass(prompt) if secure else input(prompt)
+            value = value if value.strip() != "" else old_value
+        return value
     else:
-        token = getpass("Token: ")
-        return token if token.strip() != "" else old_token
-
-
-def get_server(args: Namespace, profile: Optional[Profile]) -> str:
-    old_server = profile.server if profile is not None else API_SERVER
-    if args.server is None:
-        return old_server
-    elif args.server != ARG_NOT_SUPPLIED:
-        return args.server
-    else:
-        return API_SERVER
+        return obj
 
 
 def main():
@@ -70,13 +72,16 @@ def main():
     config_parser.add_argument("--token",
                                help="set token for selected profile",
                                type=str,
-                               nargs="?",
-                               const=ARG_NOT_SUPPLIED)
+                               nargs="?")
     config_parser.add_argument("--server",
                                help="set server to handle api requests",
                                type=str,
                                nargs="?",
-                               const=ARG_NOT_SUPPLIED)
+                               const=API_SERVER)
+    config_parser.add_argument("--user",
+                               help="set user name",
+                               type=str,
+                               nargs="?")
     config_parser.add_argument("--global",
                                help="configure global settings",
                                dest="use_global_settings",
@@ -87,8 +92,9 @@ def main():
     config_group = config_parser.add_mutually_exclusive_group()
     config_group.add_argument("--profile",
                               help="use profile or create a new one",
-                              default="default",
-                              type=str)
+                              const="default",
+                              type=str,
+                              nargs="?")
     config_group.add_argument("--remove",
                               help="remove existing profile",
                               type=str,

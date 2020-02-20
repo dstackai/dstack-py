@@ -55,6 +55,12 @@ def create_frame(stack: str,
     profile = config.get_profile(profile)
     if protocol is None:
         protocol = JsonProtocol(profile.server)
-    frame = StackFrame(stack, profile.token, handler, auto_push, protocol, encryption)
+    frame = StackFrame(stack=stack,
+                       user=profile.user,
+                       token=profile.token,
+                       handler=handler,
+                       auto_push=auto_push,
+                       protocol=protocol,
+                       encryption=encryption)
     frame.send_access()
     return frame

@@ -75,7 +75,7 @@ class StackFrameTest(unittest.TestCase):
         frame.push()
 
         attachments = self.data["attachments"]
-        self.assertEqual("plots/my_plot", self.data["stack"])
+        self.assertEqual("user/plots/my_plot", self.data["stack"])
         self.assertIsNotNone(self.data["id"])
         self.assertEqual("image/svg", self.data["type"])
         self.assertEqual("my_token", self.data["token"])
@@ -124,7 +124,7 @@ class StackFrameTest(unittest.TestCase):
     @staticmethod
     def setup_frame(protocol: Protocol, stack: str):
         config = TestConfig()
-        config.add_or_replace_profile(Profile("default", "my_token", "https://api.dstack.ai"))
+        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai"))
         return create_frame(stack=stack,
                             config=config,
                             handler=MatplotlibHandler(),

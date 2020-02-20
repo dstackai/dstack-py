@@ -14,18 +14,21 @@ class Profile(object):
 
     Attributes:
          name (str): A name of the profile which can be used in code to identify token and server.
+         user (str): Username.
          token (str):  A token of selected profile.
          server (str): API endpoint.
     """
-    def __init__(self, name: str, token: str, server: str):
+    def __init__(self, name: str, user: str, token: str, server: str):
         """Creates a profile object.
 
         Args:
             name (str): Profile name.
+            user (str): Username.
             token (str): A token which will be used with this profile.
             server (str): A server which provides API calls.
         """
         self.name = name
+        self.user = user
         self.token = token
         self.server = server
 
@@ -128,7 +131,7 @@ class YamlConfig(Config):
         if profile is None:
             return None
         else:
-            return Profile(name, profile["token"], profile.get("server", API_SERVER))
+            return Profile(name, profile["user"], profile["token"], profile.get("server", API_SERVER))
 
     def add_or_replace_profile(self, profile: Profile):
         """Adds or replaces existing profile.
@@ -141,7 +144,7 @@ class YamlConfig(Config):
 
         """
         profiles = self.yaml_data.get("profiles", {})
-        update = {"token": profile.token}
+        update = {"token": profile.token, "user": profile.user}
         if profile.server != API_SERVER:
             update["server"] = profile.server
         profiles[profile.name] = update

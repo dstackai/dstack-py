@@ -92,12 +92,14 @@ class NoEncryption(EncryptionMethod):
 class StackFrame(object):
     def __init__(self,
                  stack: str,
+                 user: str,
                  token: str,
                  handler: Handler,
                  auto_push: bool,
                  protocol: Protocol,
                  encryption: EncryptionMethod):
         self.stack = stack
+        self.user = user
         self.token = token
         self.auto_push = auto_push
         self.protocol = protocol
@@ -148,7 +150,7 @@ class StackFrame(object):
         self.send_push(frame)
 
     def new_frame(self) -> Dict:
-        data = {"stack": self.stack,
+        data = {"stack": f"{self.user}/{self.stack}",
                 "token": self.token,
                 "id": self.id,
                 "timestamp": self.timestamp,
@@ -160,7 +162,7 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        req = {"stack": self.stack, "token": self.token}
+        req = {"stack": f"{self.user}/{self.stack}", "token": self.token}
         self.protocol.send("/stacks/access", req)
 
     def send_push(self, frame: Dict) -> str:
