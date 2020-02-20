@@ -77,6 +77,7 @@ def main():
                                help="set server to handle api requests",
                                type=str,
                                nargs="?",
+                               default=API_SERVER,
                                const=API_SERVER)
     config_parser.add_argument("--user",
                                help="set user name",
