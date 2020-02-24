@@ -16,7 +16,8 @@ def config(args: Namespace):
             print(name)
             print(f"\tUser: {profile.user}")
             print(f"\tToken: {show_token(profile.token)}")
-            print(f"\tServer: {profile.server}")
+            if profile.server != API_SERVER:
+                print(f"\tServer: {profile.server}")
         return
 
     if args.profile is not None:
@@ -95,7 +96,8 @@ def main():
                               help="use profile or create a new one",
                               const="default",
                               type=str,
-                              nargs="?")
+                              nargs="?",
+                              default="default")
     config_group.add_argument("--remove",
                               help="remove existing profile",
                               type=str,

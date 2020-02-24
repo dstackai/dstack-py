@@ -7,6 +7,11 @@ import yaml
 API_SERVER = "https://api.dstack.ai"
 
 
+class ConfigurationException(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
 class Profile(object):
     """Profile. To manage tokens CLI tools is used, so sensitive information like token and server is stored separately
     in configuration files. Every configuration file contains profiles section which stores all profiles the user
@@ -18,6 +23,7 @@ class Profile(object):
          token (str):  A token of selected profile.
          server (str): API endpoint.
     """
+
     def __init__(self, name: str, user: str, token: str, server: str):
         """Creates a profile object.
 
@@ -39,6 +45,7 @@ class Config(ABC):
     but in some cases may be useful to store profiles in database or somewhere. To do so one have to inherit this class
     and override certain methods in the proper way.
     """
+
     @abstractmethod
     def list_profiles(self) -> Dict[str, Profile]:
         """Returns a map of profiles, where keys are profile names, values are `Profile` objects.
@@ -140,8 +147,7 @@ class YamlConfig(Config):
             If server information refers to standard endpoint there will be no `server` key at all.
             Which coincides with `get_profile` behaviour.
         Args:
-            profile (Profile): Profile to add or replace.
-
+            profile: Profile to add or replace.
         """
         profiles = self.yaml_data.get("profiles", {})
         update = {"token": profile.token, "user": profile.user}
@@ -166,17 +172,21 @@ class YamlConfig(Config):
         return str(self.yaml_data)
 
 
-def from_yaml_file(use_global_settings: Optional[bool] = None, dstack_dir: str = ".dstack") -> Config:
+def from_yaml_file(use_global_settings: Optional[bool] = None,
+                   dstack_dir: str = ".dstack", error_if_not_exist: bool = False) -> Config:
     """Loads YAML configuration.
 
     Args:
-        use_global_settings (Optional[bool]): Force to use global settings (located in home directory).
+        use_global_settings: Force to use global settings (located in home directory).
             If it's not set algorithm tries to find settings locally, if it fails it looks up in home directory.
             In the case than it's `True` it uses global settings otherwise local ones.
-        dstack_dir (str, optional): A directory where all dstack stuff is stored, buy default is `.dstack`.
-
+        dstack_dir: A directory where all dstack stuff is stored, buy default is `.dstack`.
+        error_if_not_exist: Force to produce error in the case of the file does not exist, by default it is `False`.
     Returns:
         YAML based configuration.
+
+    Raises:
+        ConfigurationException: If `error_if_not_exist` is `True` and file does not exist.
     """
     path = local_path = Path(dstack_dir) / Path("config.yaml")
 
@@ -184,7 +194,10 @@ def from_yaml_file(use_global_settings: Optional[bool] = None, dstack_dir: str =
         path = Path.home() / path
 
     if not path.exists():
-        return YamlConfig({}, path if use_global_settings else local_path)
+        if error_if_not_exist:
+            raise ConfigurationException(f"Configuration file does not exist, type `dstack config` in command line")
+        else:
+            return YamlConfig({}, path if use_global_settings else local_path)
 
     with path.open() as f:
         return YamlConfig(yaml.load(f, Loader=yaml.FullLoader), path)

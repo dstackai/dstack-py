@@ -67,7 +67,8 @@ class TestYamlConfig(TestCase):
 
     @staticmethod
     def conf_example() -> Dict:
-        return {"profiles": {"default": {"token": "token1", "user": "user"}, "other": {"token": "token2", "user": "user2"}}}
+        return {"profiles": {"default": {"token": "token1", "user": "user"},
+                             "other": {"token": "token2", "user": "user2"}}}
 
     def create_yaml_file(self, path: Path, content: Dict):
         content = dump(content)

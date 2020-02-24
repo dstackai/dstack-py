@@ -22,7 +22,7 @@ class PlotlyHandler(Handler):
         """
         self.plotly_js_version = plotly_js_version
 
-    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Builds frame data object from Plotly figure.
 
         Args:

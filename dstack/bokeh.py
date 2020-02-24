@@ -14,7 +14,7 @@ class BokehHandler(Handler):
         In the settings section it stores Bokeh library version as `bokeh_version`.
     """
 
-    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Converts Bokeh figure to frame data.
 
         Args:

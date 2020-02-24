@@ -2,10 +2,14 @@ import base64
 import io
 import time
 from abc import ABC, abstractmethod
+from platform import uname
 from typing import Dict, List, Optional
 from uuid import uuid4
 
 from dstack.protocol import Protocol
+
+# PEP 440
+__version__ = "0.1.0"
 
 
 class FrameData:
@@ -15,6 +19,7 @@ class FrameData:
     Every frame must have at least one `FrameData` object attached.
     Any handler must produce `FrameData` from raw data, like Matplotlib `Figure` or any other chart object.
     """
+
     def __init__(self, data: io.BytesIO,
                  description: Optional[str],
                  params: Optional[Dict],
@@ -44,7 +49,7 @@ class Handler(ABC):
     BOKEH = "bokeh"
 
     @abstractmethod
-    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Converts data object to appropriate format.
         Args:
             obj: A data which is needed to be converted, e.g. plot.
@@ -121,7 +126,7 @@ class StackFrame(object):
             description: Description of the data.
             params: Parameters associated with this data, e.g. plot settings.
         """
-        data = self.handler.as_frame(obj, description, params)
+        data = self.handler.to_frame_data(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
         if self.auto_push:
@@ -154,7 +159,10 @@ class StackFrame(object):
                 "token": self.token,
                 "id": self.id,
                 "timestamp": self.timestamp,
-                "type": self.handler.media_type()}
+                "type": self.handler.media_type(),
+                "client": "dstack-py",
+                "version": __version__,
+                "os": get_os_info()}
 
         if not isinstance(self.encryption_method, NoEncryption):
             data["encryption"] = self.encryption_method.info()
@@ -175,3 +183,7 @@ def filter_none(d):
         return {k: filter_none(v) for k, v in d.items() if v is not None}
     return d
 
+
+def get_os_info() -> Dict:
+    info = uname()
+    return {"sysname": info[0], "release": info[2], "version": info[3], "machine": info[4]}

@@ -16,7 +16,7 @@ class AutoHandler(Handler):
     def __init__(self):
         self.handler = None
 
-    def as_frame(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Creates frame data from any known object.
 
         Args:
@@ -42,7 +42,7 @@ class AutoHandler(Handler):
             self.handler = BokehHandler()
         else:
             raise UnsupportedObjectTypeException(obj)
-        return self.handler.as_frame(obj, description, params)
+        return self.handler.to_frame_data(obj, description, params)
 
     def media_type(self) -> str:
         return self.handler.media_type()
