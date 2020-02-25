@@ -13,7 +13,7 @@ class ConfigurationException(Exception):
 
 
 class Profile(object):
-    """Profile. To manage tokens CLI tools is used, so sensitive information like token and server is stored separately
+    """To manage tokens CLI tools are used, so sensitive information like token and server is stored separately
     in configuration files. Every configuration file contains profiles section which stores all profiles the user
     have configured.
 
@@ -25,7 +25,7 @@ class Profile(object):
     """
 
     def __init__(self, name: str, user: str, token: str, server: str):
-        """Creates a profile object.
+        """Create a profile object.
 
         Args:
             name (str): Profile name.
@@ -48,7 +48,7 @@ class Config(ABC):
 
     @abstractmethod
     def list_profiles(self) -> Dict[str, Profile]:
-        """Returns a map of profiles, where keys are profile names, values are `Profile` objects.
+        """Return a map of profiles, where keys are profile names, values are `Profile` objects.
 
         Returns:
             A dictionary of available profiles. If there is no configured profiles empty dictionary will be returned.
@@ -57,7 +57,7 @@ class Config(ABC):
 
     @abstractmethod
     def get_profile(self, name: str) -> Optional[Profile]:
-        """Gets profile by name.
+        """Get profile by name.
 
         Args:
             name (str): A name of profile you are looking for.
@@ -69,7 +69,7 @@ class Config(ABC):
 
     @abstractmethod
     def add_or_replace_profile(self, profile: Profile):
-        """Adds or replace existing profile in the configuration. This operation doesn't persist anything, just changes.
+        """Add or replace existing profile in the configuration. This operation doesn't persist anything, just changes.
         To persist configuration use `save` method.
 
         Args:
@@ -79,12 +79,13 @@ class Config(ABC):
 
     @abstractmethod
     def save(self):
-        """Saves configuration."""
+        """Save configuration."""
         pass
 
     @abstractmethod
     def remove_profile(self, name: str) -> Profile:
-        """Deletes specified profile.
+        """Delete specified profile.
+
         Args:
             name (str): A name of the profile to delete.
 
@@ -95,7 +96,7 @@ class Config(ABC):
 
 
 class YamlConfig(Config):
-    """Implement `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
+    """A class implements `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
     Comments can't be used in config file, because `save` method will remove it all. So, editing of configuration files
     is not recommended. To configure please use dstack CLI tools.
 
@@ -104,7 +105,7 @@ class YamlConfig(Config):
     """
 
     def __init__(self, yaml_data, path: Path):
-        """Creates an instance from loaded data.
+        """Create an instance from loaded data.
 
         Args:
             yaml_data: Dictionary like structure to store configuration.
@@ -122,7 +123,7 @@ class YamlConfig(Config):
         return result
 
     def get_profile(self, name: str) -> Optional[Profile]:
-        """Returns profile with specified name or `None`.
+        """Return profile with specified name or `None`.
 
         Notes:
             In the case if server is not configured standard endpoint will be used.
@@ -141,7 +142,7 @@ class YamlConfig(Config):
             return Profile(name, profile["user"], profile["token"], profile.get("server", API_SERVER))
 
     def add_or_replace_profile(self, profile: Profile):
-        """Adds or replaces existing profile.
+        """Add or replaces existing profile.
 
         Notes:
             If server information refers to standard endpoint there will be no `server` key at all.
@@ -174,7 +175,7 @@ class YamlConfig(Config):
 
 def from_yaml_file(use_global_settings: Optional[bool] = None,
                    dstack_dir: str = ".dstack", error_if_not_exist: bool = False) -> Config:
-    """Loads YAML configuration.
+    """Load YAML configuration.
 
     Args:
         use_global_settings: Force to use global settings (located in home directory).

@@ -13,7 +13,7 @@ __version__ = "0.1.0"
 
 
 class FrameData:
-    """Represents frame data structure which will be attached to stack frame by `commit` and can be sent by protocol
+    """Represent frame data structure which will be attached to stack frame by `commit` and can be sent by protocol
     implementation, as JSON for example. Every frame can contain many `FrameData` objects, any such object represent
     a piece of data user is going to publish, e.g. a chart with specified parameters.
     Every frame must have at least one `FrameData` object attached.
@@ -24,7 +24,7 @@ class FrameData:
                  description: Optional[str],
                  params: Optional[Dict],
                  settings: Optional[Dict] = None):
-        """Creates frame data.
+        """Create frame data.
         Args:
             data: A binary representation of the object to be displayed.
             description: Optional description.
@@ -50,7 +50,7 @@ class Handler(ABC):
 
     @abstractmethod
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        """Converts data object to appropriate format.
+        """Convert data object to appropriate format.
         Args:
             obj: A data which is needed to be converted, e.g. plot.
             description: Description of the data.
@@ -116,7 +116,7 @@ class StackFrame(object):
         self.data: List[FrameData] = []
 
     def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None):
-        """Adds data to the stack frame.
+        """Add data to the stack frame.
 
         Args:
             obj: A data to commit. Data will be preprocessed by the handler but dependently on auto_push
@@ -133,7 +133,7 @@ class StackFrame(object):
             self.push_data(encrypted_data)
 
     def push(self) -> str:
-        """Pushes all commits to server. In the case of auto_push mode it sends only a total number
+        """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
         Returns:

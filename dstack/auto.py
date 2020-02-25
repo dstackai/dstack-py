@@ -17,7 +17,7 @@ class AutoHandler(Handler):
         self.handler = None
 
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        """Creates frame data from any known object.
+        """Create frame data from any known object.
 
         Args:
             obj: An object.

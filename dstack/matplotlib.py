@@ -8,7 +8,7 @@ class MatplotlibHandler(Handler):
     """Handler to deal with matplotlib charts."""
 
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        """Converts matplotlib figure to frame data.
+        """Convert matplotlib figure to frame data.
 
         Notes:
             Figure will be converted to SVG format.

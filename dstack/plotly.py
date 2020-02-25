@@ -14,7 +14,7 @@ class PlotlyHandler(Handler):
     """
 
     def __init__(self, plotly_js_version: Optional[str] = None):
-        """Creates an instance with specified Plotly.js version if needed.
+        """Create an instance with specified Plotly.js version if needed.
 
         Args:
             plotly_js_version: Plotly.js version to use. It will stored in the settings
@@ -23,7 +23,7 @@ class PlotlyHandler(Handler):
         self.plotly_js_version = plotly_js_version
 
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        """Builds frame data object from Plotly figure.
+        """Build frame data object from Plotly figure.
 
         Args:
             obj (plotly.graph_objs._figure.Figure): Plotly figure to publish.

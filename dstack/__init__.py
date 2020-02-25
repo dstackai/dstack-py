@@ -13,13 +13,13 @@ def create_frame(stack: str,
                  protocol: Optional[Protocol] = None,
                  config: Optional[Config] = None,
                  encryption: Optional[EncryptionMethod] = None) -> StackFrame:
-    """Creates a new stack frame. The method also checks access to specified stack.
+    """Create a new stack frame. The method also checks access to specified stack.
 
     Args:
         stack: A stack you want to use. It must be a full path to the stack e.g. `user/project/sub-project/plot`.
         handler: A handler which can be specified in the case of custom content,
             but by default it is AutoHandler.
-        profile: A profile refers to credentials, i.e. token. Default profile is named 'default'.
+        profile: A profile refers to credentials, i.e. username and token. Default profile is named 'default'.
             The system is looking for specified profile as follows:
             it looks into working directory to find a configuration file (local configuration),
             if the file doesn't exist it looks into user directory to find it (global configuration).
@@ -83,7 +83,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
                profile: str = "default",
                config: Optional[Config] = None,
                encryption: Optional[EncryptionMethod] = None) -> str:
-    """Creates frame in the stack, commits and pushes data in a single operation.
+    """Create frame in the stack, commits and pushes data in a single operation.
 
     Args:
         stack: A stack you want to commit and push to.
