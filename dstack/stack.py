@@ -155,7 +155,7 @@ class StackFrame(object):
         self.send_push(frame)
 
     def new_frame(self) -> Dict:
-        data = {"stack": f"{self.user}/{self.stack}",
+        data = {"stack": self.stack_path(),
                 "token": self.token,
                 "id": self.id,
                 "timestamp": self.timestamp,
@@ -170,12 +170,15 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        req = {"stack": f"{self.user}/{self.stack}", "token": self.token}
+        req = {"stack": self.stack_path(), "token": self.token}
         self.protocol.send("/stacks/access", req)
 
     def send_push(self, frame: Dict) -> str:
         res = self.protocol.send("/stacks/push", frame)
         return res["url"]
+
+    def stack_path(self) -> str:
+        return self.stack[1:] if self.stack[0] == "/" else f"{self.user}/{self.stack}"
 
 
 def filter_none(d):

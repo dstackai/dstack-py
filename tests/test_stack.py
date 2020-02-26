@@ -107,14 +107,25 @@ class StackFrameTest(unittest.TestCase):
             self.assertEqual(idx, att["params"]["index"])
             self.assertEqual(phase, att["params"]["phase"])
 
-    def test_cant_send_push(self):
-        pass
+    def test_stack_relative_path(self):
+        protocol = TestProtocol(self.handler)
+        frame = self.setup_frame(protocol, stack="plots/my_plot")
+        frame.commit(self.get_figure())
+        frame.push()
+        self.assertEqual(f"user/plots/my_plot", self.data["stack"])
 
-    def test_auto_push(self):
-        pass
+    def test_stack_absolute_path(self):
+        protocol = TestProtocol(self.handler)
+        frame = self.setup_frame(protocol, stack="/other/my_plot")
+        frame.commit(self.get_figure())
+        frame.push()
+        self.assertEqual(f"other/my_plot", self.data["stack"])
 
-    def test_cant_send_auto_push(self):
-        pass
+    @staticmethod
+    def get_figure():
+        fig = plt.figure()
+        plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
+        return fig
 
     def handler(self, data: Dict) -> Dict:
         self.data = data
