@@ -1,8 +1,10 @@
 from setuptools import setup
 
+from dstack.version import __version__
+
 setup(
     name="dstack",
-    version="0.1.0",
+    version=__version__,
     author="swordhands",
     author_email="team@dstack.ai",
     packages=["dstack", "dstack.cli"],
@@ -10,9 +12,9 @@ setup(
     entry_points={
         "console_scripts": ["dstack=dstack.cli.main:main"],
     },
-    url="http://pypi.python.org/pypi/dstack/",
+    url="https://dstack.ai",
     license="LICENSE",
-    description="DStack Python API",
+    description="An open-source library to publish plots",
     long_description="",  # open("README").read(),
     install_requires=[
         "PyYAML>=5.1"

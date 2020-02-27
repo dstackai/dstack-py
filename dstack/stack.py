@@ -7,9 +7,7 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 
 from dstack.protocol import Protocol
-
-# PEP 440
-__version__ = "0.1.0"
+from dstack.version import __version__
 
 
 class FrameData:

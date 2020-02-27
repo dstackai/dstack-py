@@ -1,12 +1,12 @@
 import json
 import unittest
-from typing import Dict, Callable, Optional
+from typing import Dict, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from dstack import create_frame
-from dstack.config import Config, Profile
+from dstack.config import Profile, InPlaceConfig
 from dstack.matplotlib import MatplotlibHandler
 from dstack.protocol import Protocol
 
@@ -27,28 +27,6 @@ class TestProtocol(Protocol):
 
     def fix(self):
         self.exception = None
-
-
-class TestConfig(Config):
-    def __init__(self):
-        self.profiles = {}
-
-    def list_profiles(self) -> Dict[str, Profile]:
-        return self.profiles
-
-    def get_profile(self, name: str) -> Optional[Profile]:
-        return self.profiles.get(name, None)
-
-    def add_or_replace_profile(self, profile: Profile):
-        self.profiles[profile.name] = profile
-
-    def save(self):
-        raise RuntimeError("Not implemented")
-
-    def remove_profile(self, name: str) -> Profile:
-        profile = self.profiles[name]
-        del self.profiles[name]
-        return profile
 
 
 class StackFrameTest(unittest.TestCase):
@@ -134,7 +112,7 @@ class StackFrameTest(unittest.TestCase):
 
     @staticmethod
     def setup_frame(protocol: Protocol, stack: str):
-        config = TestConfig()
+        config = InPlaceConfig()
         config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai"))
         return create_frame(stack=stack,
                             config=config,

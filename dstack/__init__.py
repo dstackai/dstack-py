@@ -1,9 +1,25 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 
 from dstack.auto import AutoHandler
-from dstack.config import Config, from_yaml_file
+from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
 from dstack.protocol import Protocol, JsonProtocol
 from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame
+
+__config_factory: ConfigFactory = YamlConfigFactory()
+
+
+def configure(config: Union[Config, ConfigFactory]):
+    global __config_factory
+    if isinstance(config, Config):
+        class SimpleConfigFactory(ConfigFactory):
+            def get_config(self) -> Config:
+                return config
+
+        __config_factory = SimpleConfigFactory()
+    elif isinstance(config, ConfigFactory):
+        __config_factory = config
+    else:
+        raise TypeError(f"Config or ConfigFactory expected but found {type(config)}")
 
 
 def create_frame(stack: str,
@@ -56,7 +72,7 @@ def create_frame(stack: str,
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
     if config is None:
-        config = from_yaml_file(error_if_not_exist=True)
+        config = __config_factory.get_config()
 
     profile = config.get_profile(profile)
 

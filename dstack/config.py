@@ -18,20 +18,20 @@ class Profile(object):
     have configured.
 
     Attributes:
-         name (str): A name of the profile which can be used in code to identify token and server.
-         user (str): Username.
-         token (str):  A token of selected profile.
-         server (str): API endpoint.
+         name: A name of the profile which can be used in code to identify token and server.
+         user: Username.
+         token:  A token of selected profile.
+         server: API endpoint.
     """
 
     def __init__(self, name: str, user: str, token: str, server: str):
         """Create a profile object.
 
         Args:
-            name (str): Profile name.
-            user (str): Username.
-            token (str): A token which will be used with this profile.
-            server (str): A server which provides API calls.
+            name: Profile name.
+            user: Username.
+            token: A token which will be used with this profile.
+            server: A server which provides API calls.
         """
         self.name = name
         self.user = user
@@ -171,6 +171,40 @@ class YamlConfig(Config):
 
     def __repr__(self) -> str:
         return str(self.yaml_data)
+
+
+class InPlaceConfig(Config):
+    def __init__(self):
+        self.profiles = {}
+
+    def list_profiles(self) -> Dict[str, Profile]:
+        return self.profiles
+
+    def get_profile(self, name: str) -> Optional[Profile]:
+        return self.profiles.get(name, None)
+
+    def add_or_replace_profile(self, profile: Profile):
+        self.profiles[profile.name] = profile
+
+    def save(self):
+        raise RuntimeError("In-place configuration can not be saved")
+
+    def remove_profile(self, name: str) -> Profile:
+        profile = self.profiles[name]
+        del self.profiles[name]
+        return profile
+
+
+class ConfigFactory(ABC):
+    @abstractmethod
+    def get_config(self) -> Config:
+        pass
+
+
+class YamlConfigFactory(ConfigFactory):
+
+    def get_config(self) -> Config:
+        return from_yaml_file(error_if_not_exist=True)
 
 
 def from_yaml_file(use_global_settings: Optional[bool] = None,
