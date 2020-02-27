@@ -8,7 +8,7 @@ The **dstack** package and **command line tool** must be installed with either *
 pip install dstack
 ```
 
-Note, if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
+Note, *only* Python 3 is supported right now and if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
 
 ## Configuration
 
@@ -31,9 +31,6 @@ See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information ab
 ## Publishing simple plots
 
 Once the **dstack profile** is configured, you can publish plots from your Python program or Jupyter notebook. Let's consider the simpliest example, line plot using [matplotlib](https://matplotlib.org/) library, but you can use [bokeh](https://docs.bokeh.org/en/latest/index.html) and [plotly](https://plot.ly) plots instead of matplotlib in the same way: 
-
-Python example:
-
 ```python
 import matplotlib.pyplot as plt
 from dstack import push_frame
@@ -47,9 +44,6 @@ push_frame("simple", fig, "My first plot")
 ## Publishing interactive plots
 
 In some cases, you want to have plots that are interactive and that can change when the user change its parameters. Suppose you want to publish a line plot that depends on the value of the parameter `Coefficient` (slope).
-
-Python example:
-
 ```python
 import matplotlib.pyplot as plt
 from dstack import create_frame
