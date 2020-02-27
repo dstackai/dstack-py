@@ -24,13 +24,13 @@ dstack config --token <TOKEN> --user <USER>
 
 In this case, the **dstack profile** name will be `default`. You can change it by including `--profile <PROFILE NAME>` in your command. This allows you to configure multiple profiles and refer to them from your code by their names.
 
-By default, the configuration profile is stored locally, i.e. in your working directory: `<WORKING DIRECTORY>/.dstack/config.yaml`
+By default, the configuration profile is stored locally, i.e. in your working directory: `<WORKING_DIRECTORY>/.dstack/config.yaml`
 
 See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information about command line tools or type `dstack config --help`.
 
 ## Publishing simple plots
 
-Once the **dstack profile** is configured, you can publish plots from your Python or R code. Let's consider two simple examples, almost identical line plots one for Python using [matplotlib](https://matplotlib.org/) library, and one for R using [ggplot2](https://ggplot2.tidyverse.org/): 
+Once the **dstack profile** is configured, you can publish plots from your Python program or Jupyter notebook. Let's consider the simpliest example, line plot using [matplotlib](https://matplotlib.org/) library, but you can use [bokeh](https://docs.bokeh.org/en/latest/index.html) and [plotly](https://plot.ly) plots instead of matplotlib in the same way: 
 
 Python example:
 
@@ -42,30 +42,11 @@ fig = plt.figure()
 plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
 
 push_frame("simple", fig, "My first plot")
-library(ggplot2)
-library(dstack)
-
-df <- data.frame(x = c(1, 2, 3, 4), y = c(1, 4, 9, 16))
-image <- ggplot(data = df, aes(x = x, y = y)) + geom_line()
-
-push_frame("simple", image, "My first plot")
-```
-
-R example:
-
-```r
-library(ggplot2)
-library(dstack)
-
-df <- data.frame(x = c(1, 2, 3, 4), y = c(1, 4, 9, 16))
-image <- ggplot(data = df, aes(x = x, y = y)) + geom_line()
-
-push_frame("simple", image, "My first plot")
 ```
 
 ## Publishing interactive plots
 
-In some cases, you want to have plots that are interactive and that can change when the user change its parameters. Suppose you want to publish a line plot that depends on the value of the parameter `Coefficient`.
+In some cases, you want to have plots that are interactive and that can change when the user change its parameters. Suppose you want to publish a line plot that depends on the value of the parameter `Coefficient` (slope).
 
 Python example:
 
@@ -89,39 +70,6 @@ for c in coeff:
     frame.commit(line_plot(c), f"Line plot with the coefficient of {c}", {"Coefficient": c})
 
 frame.push()
-library(ggplot2)
-library(dstack)
-```
-
-R example:
-
-```r
-line_plot <- function(a) {
-  
-    x <- c(0:20)
-  
-    y <- sapply(x, function(x) { return(a * x) })
-  
-    df <- data.frame(x = x, y = y)
-  
-    plot <- ggplot(data = df, aes(x = x, y = y)) + 
-        geom_line() + xlim(0, 20) + ylim(0, 20)
-    return(plot)
-
-}
-
-
-
-coeff <- c(0.5, 1.0, 1.5, 2.0)
-frame <- create_frame(stack = "line_plot")
-
-for(c in coeff) {
-  
-    frame <- commit(frame, line_plot(c), 
-        paste0("Line plot with the coefficient of ", c), list(Coefficient = a))
-}
-
-push(frame)
 ```
 
 ## Documentation
