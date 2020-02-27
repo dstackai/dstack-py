@@ -21,7 +21,10 @@ Configuring a **dstack profile** can be done by the following command:
 ```bash
 dstack config --token <TOKEN> --user <USER>
 ```
-
+or simply
+```bash
+dstack config
+```
 In this case, the **dstack profile** name will be `default`. You can change it by including `--profile <PROFILE NAME>` in your command. This allows you to configure multiple profiles and refer to them from your code by their names.
 
 By default, the configuration profile is stored locally, i.e. in your working directory: `<WORKING_DIRECTORY>/.dstack/config.yaml`

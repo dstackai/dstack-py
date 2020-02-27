@@ -15,8 +15,14 @@ setup(
     url="https://dstack.ai",
     license="LICENSE",
     description="An open-source library to publish plots",
-    long_description="",  # open("README").read(),
+    long_description=open("README.md").read(),
     install_requires=[
         "PyYAML>=5.1"
     ],
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Topic :: Scientific/Engineering :: Visualization",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3"
+    ]
 )
