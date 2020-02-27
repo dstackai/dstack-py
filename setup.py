@@ -16,6 +16,7 @@ setup(
     license="LICENSE",
     description="An open-source library to publish plots",
     long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     install_requires=[
         "PyYAML>=5.1"
     ],
