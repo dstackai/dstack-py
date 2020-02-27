@@ -8,7 +8,7 @@ The **dstack** package and **command line tool** must be installed with either *
 pip install dstack
 ```
 
-Note, *only* Python 3 is supported right now and if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
+Note, *only* Python 3 is supported and if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
 
 ## Configuration
 
