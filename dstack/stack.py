@@ -148,7 +148,7 @@ class StackFrame(object):
     def push_data(self, data: FrameData):
         frame = self.new_frame()
         frame["index"] = self.index
-        frame["attachments"][0] = filter_none(data.__dict__)
+        frame["attachments"] = [filter_none(data.__dict__)]
         self.index += 1
         self.send_push(frame)
 
