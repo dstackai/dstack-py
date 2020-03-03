@@ -142,7 +142,7 @@ class StackFrame(object):
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
             return self.send_push(frame)
         else:
-            frame["total"] = self.index
+            frame["size"] = self.index
             return self.send_push(frame)
 
     def push_data(self, data: FrameData):
