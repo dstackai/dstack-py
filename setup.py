@@ -13,12 +13,12 @@ setup(
         "console_scripts": ["dstack=dstack.cli.main:main"],
     },
     url="https://dstack.ai",
-    license="LICENSE",
+    license="Apache License 2.0",
     description="An open-source library to publish plots",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     install_requires=[
-        "PyYAML>=5.1"
+        "pyyaml>=5.1"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

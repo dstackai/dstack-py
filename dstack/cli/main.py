@@ -4,6 +4,7 @@ from getpass import getpass
 from typing import Optional
 
 from dstack.config import from_yaml_file, Profile, API_SERVER
+from dstack.version import __version__ as version
 
 
 def config(args: Namespace):
@@ -66,8 +67,8 @@ def get_or_ask(args: Namespace, profile: Optional[Profile], field: str, prompt: 
 
 
 def main():
-    parser = ArgumentParser()
-
+    parser = ArgumentParser(epilog="Please visit https://docs.dstack.ai for more information")
+    parser.add_argument("--version", action="version", version=f"{version}")
     subparsers = parser.add_subparsers()
     config_parser = subparsers.add_parser("config", help="manage your configuration")
     config_parser.add_argument("--token",
