@@ -37,14 +37,6 @@ class FrameData:
 
 
 class Handler(ABC):
-    """To be able to publish data it's necessary to have a suitable binary representation. This is a base class for all
-    handlers. Many useful representations are supported including popular formats such as PNG and SVG. Moreover popular
-    JavaScript-based libraries like Plotly and Bokeh are supported as well.
-    """
-    IMAGE_PNG = "image/png"
-    IMAGE_SVG = "image/svg"
-    PLOTLY = "plotly"
-    BOKEH = "bokeh"
 
     @abstractmethod
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
@@ -62,15 +54,7 @@ class Handler(ABC):
 
     @abstractmethod
     def media_type(self) -> str:
-        """Supported media type.
-
-        Returns:
-            One of the following supported media types with corresponding constants:
-            `IMAGE_PNG` refers to "image/png" and represents PNG images
-            `IMAGE_SVG` refers to "image/svg" and represents SVG images
-            `PLOTLY`    refers to "plotly" and represents Plotly chart as JSON
-            `BOKEH`     refers to "bokeh" and represents Bokeh chart as JSON
-        """
+        """Supported media type."""
         pass
 
 

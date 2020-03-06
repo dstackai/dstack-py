@@ -26,4 +26,4 @@ class MatplotlibHandler(Handler):
         return FrameData(buf, description, params)
 
     def media_type(self) -> str:
-        return self.IMAGE_SVG
+        return "image/svg"

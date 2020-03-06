@@ -38,4 +38,4 @@ class PlotlyHandler(Handler):
                          {"plotly_version": plotly_version, "plotly_js_version": self.plotly_js_version})
 
     def media_type(self) -> str:
-        return self.PLOTLY
+        return "plotly"
