@@ -34,8 +34,5 @@ class PlotlyHandler(Handler):
             Frame data.
         """
         json = obj.to_json()
-        return FrameData(BytesIO(json.encode("utf-8")), description, params,
+        return FrameData(BytesIO(json.encode("utf-8")), "plotly", description, params,
                          {"plotly_version": plotly_version, "plotly_js_version": self.plotly_js_version})
-
-    def media_type(self) -> str:
-        return "plotly"

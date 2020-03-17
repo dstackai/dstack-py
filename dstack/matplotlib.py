@@ -23,7 +23,4 @@ class MatplotlibHandler(Handler):
         """
         buf = io.BytesIO()
         obj.savefig(buf, format="svg")
-        return FrameData(buf, description, params)
-
-    def media_type(self) -> str:
-        return "image/svg"
+        return FrameData(buf, "image/svg", description, params)

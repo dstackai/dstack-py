@@ -14,7 +14,6 @@ class AutoHandler(Handler):
     """A handler which selects appropriate implementation depending on `obj` itself in runtime."""
 
     def __init__(self):
-        self.handler = None
         self.chain = {
             "<class 'matplotlib.figure.Figure'>": matplotlib_factory,
             "<class 'plotly.graph_objs._figure.Figure'>": plotly_factory,
@@ -38,13 +37,10 @@ class AutoHandler(Handler):
         """
         tpe = str(type(obj))
         if tpe in self.chain:
-            self.handler = self.chain[tpe]()
+            handler = self.chain[tpe]()
         else:
             raise UnsupportedObjectTypeException(obj)
-        return self.handler.to_frame_data(obj, description, params)
-
-    def media_type(self) -> str:
-        return self.handler.media_type()
+        return handler.to_frame_data(obj, description, params)
 
 
 def matplotlib_factory() -> Handler:

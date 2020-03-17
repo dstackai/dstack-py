@@ -19,10 +19,7 @@ class DataFrameHandler(Handler):
         buf = StringIO()
         schema = [str(t) for t in obj.dtypes]
         obj.to_csv(buf, index=self.index, header=self.header, encoding=self.encoding, quoting=QUOTE_ALL)
-        return FrameData(BytesIO(buf.getvalue().encode(self.encoding)), description, params,
+        return FrameData(BytesIO(buf.getvalue().encode(self.encoding)), "text/csv", description, params,
                          {"header": self.header, "index": self.index,
                           "schema": schema, "source": "pandas",
                           "version": pandas_version})
-
-    def media_type(self) -> str:
-        return "text/csv"
