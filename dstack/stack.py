@@ -32,7 +32,7 @@ class FrameData:
             settings: Optional settings are usually used to store libraries versions or extra information
                 required to display data correctly.
         """
-        self.data = str(base64.b64encode(data.getvalue()))[2:-1]
+        self.data = base64.b64encode(data.getvalue()).decode()
         self.type = media_type
         self.description = description
         self.params = params
