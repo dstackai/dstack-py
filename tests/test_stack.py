@@ -55,9 +55,9 @@ class StackFrameTest(unittest.TestCase):
         attachments = self.data["attachments"]
         self.assertEqual("user/plots/my_plot", self.data["stack"])
         self.assertIsNotNone(self.data["id"])
-        self.assertEqual("image/svg", self.data["type"])
         self.assertEqual("my_token", self.data["token"])
         self.assertEqual(1, len(attachments))
+        self.assertEqual("image/svg", attachments[0]["type"])
         self.assertNotIn("params", attachments[0].keys())
         self.assertEqual(my_desc, attachments[0]["description"])
 

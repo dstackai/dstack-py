@@ -26,7 +26,4 @@ class BokehHandler(Handler):
             Frame data.
         """
         text = dumps(json_item(obj))
-        return FrameData(BytesIO(text.encode("utf-8")), description, params, {"bokeh_version": bokeh_version})
-
-    def media_type(self) -> str:
-        return self.BOKEH
+        return FrameData(BytesIO(text.encode("utf-8")), "bokeh", description, params, {"bokeh_version": bokeh_version})

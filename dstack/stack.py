@@ -19,32 +19,27 @@ class FrameData:
     """
 
     def __init__(self, data: io.BytesIO,
+                 media_type: str,
                  description: Optional[str],
                  params: Optional[Dict],
                  settings: Optional[Dict] = None):
         """Create frame data.
         Args:
             data: A binary representation of the object to be displayed.
+            media_type: Supported media type.
             description: Optional description.
             params: A dictionary with parameters which will be used to produce appropriate controls.
             settings: Optional settings are usually used to store libraries versions or extra information
                 required to display data correctly.
         """
-        self.data = str(base64.b64encode(data.getvalue()))[2:-1]
+        self.data = base64.b64encode(data.getvalue()).decode()
+        self.type = media_type
         self.description = description
         self.params = params
         self.settings = settings
 
 
 class Handler(ABC):
-    """To be able to publish data it's necessary to have a suitable binary representation. This is a base class for all
-    handlers. Many useful representations are supported including popular formats such as PNG and SVG. Moreover popular
-    JavaScript-based libraries like Plotly and Bokeh are supported as well.
-    """
-    IMAGE_PNG = "image/png"
-    IMAGE_SVG = "image/svg"
-    PLOTLY = "plotly"
-    BOKEH = "bokeh"
 
     @abstractmethod
     def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
@@ -57,19 +52,6 @@ class Handler(ABC):
 
         Returns:
             Frame data.
-        """
-        pass
-
-    @abstractmethod
-    def media_type(self) -> str:
-        """Supported media type.
-
-        Returns:
-            One of the following supported media types with corresponding constants:
-            `IMAGE_PNG` refers to "image/png" and represents PNG images
-            `IMAGE_SVG` refers to "image/svg" and represents SVG images
-            `PLOTLY`    refers to "plotly" and represents Plotly chart as JSON
-            `BOKEH`     refers to "bokeh" and represents Bokeh chart as JSON
         """
         pass
 
@@ -157,7 +139,6 @@ class StackFrame(object):
                 "token": self.token,
                 "id": self.id,
                 "timestamp": self.timestamp,
-                "type": self.handler.media_type(),
                 "client": "dstack-py",
                 "version": __version__,
                 "os": get_os_info()}
