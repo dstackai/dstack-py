@@ -1,4 +1,8 @@
+import base64
+import json
+from io import StringIO
 from typing import Optional, Dict, Union
+from urllib import request
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
@@ -26,9 +30,6 @@ def create_frame(stack: str,
                  handler: Handler = AutoHandler(),
                  profile: str = "default",
                  auto_push: bool = False,
-                 protocol: Optional[Protocol] = None,
-                 config: Optional[Config] = None,
-                 encryption: EncryptionMethod = NoEncryption(),
                  check_access: bool = True) -> StackFrame:
     """Create a new stack frame. The method also checks access to specified stack.
 
@@ -56,11 +57,6 @@ def create_frame(stack: str,
             from command line, make sure that you have already obtained token from the site.
         auto_push:  Tells the system to push frame just after commit. It may be useful if you
             want to see result immediately. Default is False.
-        protocol: A protocol, if None then `JsonProtocol` will be used.
-        config: By default YAML-based configuration `YamlConfig` is used with file lookup
-            rules described above.
-        encryption: An encryption method, by default encryption is not provided,
-            so it is `NoEncryption`.
         check_access: Check access to be sure about credentials before trying to actually push something.
             Default is `True`.
 
@@ -71,21 +67,16 @@ def create_frame(stack: str,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
-    if config is None:
-        config = __config_factory.get_config()
-
+    config = __config_factory.get_config()
     profile = config.get_profile(profile)
-
-    if protocol is None:
-        protocol = JsonProtocol(profile.server)
 
     frame = StackFrame(stack=stack,
                        user=profile.user,
                        token=profile.token,
                        handler=handler,
                        auto_push=auto_push,
-                       protocol=protocol,
-                       encryption=encryption)
+                       protocol=config.create_protocol(profile),
+                       encryption=config.get_encryption(profile))
     if check_access:
         frame.send_access()
 
@@ -95,9 +86,7 @@ def create_frame(stack: str,
 def push_frame(stack: str, obj, description: Optional[str] = None,
                params: Optional[Dict] = None,
                handler: Handler = AutoHandler(),
-               profile: str = "default",
-               config: Optional[Config] = None,
-               encryption: EncryptionMethod = NoEncryption()) -> str:
+               profile: str = "default") -> str:
     """Create frame in the stack, commits and pushes data in a single operation.
 
     Args:
@@ -107,8 +96,6 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         params: Optional parameters.
         handler: Specify handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
-        config: Configuration to manage profiles. If it is unspecified `YamlConfig` will be used.
-        encryption: Encryption method. By default `NoEncryption` will be used.
     Raises:
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
@@ -116,8 +103,57 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
     frame = create_frame(stack=stack,
                          handler=handler,
                          profile=profile,
-                         config=config,
-                         encryption=encryption,
                          check_access=False)
     frame.commit(obj, description, params)
     return frame.push()
+
+
+class MatchException(ValueError):
+    def __init__(self, params: Dict):
+        self.params = params
+
+    def __str__(self):
+        return f"Can't match parameters {self.params}"
+
+
+def pull(stack: str,
+         profile: str = "default",
+         filename: Optional[str] = None,
+         params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
+
+    def do_get(url: str):
+        req = request.Request(url, method="GET")
+        req.add_header("Content-Type", f"application/json; charset=UTF-8")
+        req.add_header("Authorization", f"Bearer {profile.token}")
+        r = request.urlopen(req)
+        return json.loads(r.read(), encoding="UTF-8")
+
+    config = __config_factory.get_config()
+    profile = config.get_profile(profile)
+    params = {} if params is None else params
+    params.update(kwargs)
+    stack_path = stack if stack.startswith("/") else f"{profile.user}/{stack}"
+    url = f"{profile.server}/stacks/{stack_path}"
+    res = do_get(url)
+    attachments = res["stack"]["head"]["attachments"]
+    for index, attach in enumerate(attachments):
+        if set(attach["params"]) == set(params):
+            frame = res["stack"]["head"]["id"]
+            attach_url = f"{profile.server}/attachs/{stack_path}/{frame}/{index}?download=true"
+            r = do_get(attach_url)
+            if "data" not in r["attachment"]:
+                download_url = r["attachment"]["download_url"]
+                if filename is not None:
+                    request.urlretrieve(download_url, filename)
+                    return filename
+                else:
+                    return download_url
+            else:
+                if filename is not None:
+                    f = open(filename, "wb")
+                    f.write(base64.b64decode(r["attachment"]["data"]))
+                    return filename
+                else:
+                    data = base64.b64decode(r["attachment"]["data"])
+                    return StringIO(data.decode("utf-8"))
+    raise MatchException(params)

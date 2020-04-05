@@ -4,6 +4,9 @@ from typing import Optional, Dict
 
 import yaml
 
+from dstack.protocol import JsonProtocol, Protocol
+from dstack.stack import NoEncryption, EncryptionMethod
+
 API_SERVER = "https://api.dstack.ai"
 
 
@@ -94,6 +97,11 @@ class Config(ABC):
         """
         pass
 
+    def create_protocol(self, profile: Profile) -> Protocol:
+        return JsonProtocol(profile.server)
+
+    def get_encryption(self, profile: Profile) -> EncryptionMethod:
+        return NoEncryption()
 
 class YamlConfig(Config):
     """A class implements `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
