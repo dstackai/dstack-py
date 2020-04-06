@@ -20,7 +20,7 @@ class Protocol(ABC):
 
 class JsonProtocol(Protocol):
     ENCODING = "utf-8"
-    MAX_SIZE = 10_000_000
+    MAX_SIZE = 5_000_000
 
     def __init__(self, url: str):
         self.url = url
@@ -35,7 +35,7 @@ class JsonProtocol(Protocol):
             attachments = data["attachments"]
             content = []
             for index, attach in enumerate(attachments):
-                content.append(base64.b64decode(attach.pop('data')))
+                content.append(base64.b64decode(attach.pop("data")))
                 attach["length"] = len(content[index])
             data_bytes = json.dumps(data).encode(self.ENCODING)
             result = self.do_request(endpoint, data_bytes, token)
