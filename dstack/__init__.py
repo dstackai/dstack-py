@@ -120,6 +120,22 @@ def pull(stack: str,
          profile: str = "default",
          filename: Optional[str] = None,
          params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
+    """Pull data object from stack frame (head) which matches specified parameters.
+
+    Args:
+        stack: Stack you want to pull from.
+        profile: Profile to use. 'default' will be used if profile is not specified.
+        filename: Filename if you want to store downloaded file on disk.
+        params: Parameters to match. In can be used in the case if parameter has a name with spaces, otherwise use **kwargs instead.
+            If both are used actual parameters to match will be **kwargs merged to params.
+        **kwargs: Parameters to match.
+
+    Returns:
+        StringIO object in the case of small files, URL if file is large.
+
+    Raises:
+        MatchException if there is no object that matches the parameters.
+    """
 
     def do_get(url: str):
         req = request.Request(url, method="GET")
@@ -130,14 +146,14 @@ def pull(stack: str,
 
     config = __config_factory.get_config()
     profile = config.get_profile(profile)
-    params = {} if params is None else params
+    params = {} if params is None else params.copy()
     params.update(kwargs)
     stack_path = stack if stack.startswith("/") else f"{profile.user}/{stack}"
     url = f"{profile.server}/stacks/{stack_path}"
     res = do_get(url)
     attachments = res["stack"]["head"]["attachments"]
     for index, attach in enumerate(attachments):
-        if set(attach["params"]) == set(params):
+        if set(attach["params"].items()) == set(params.items()):
             frame = res["stack"]["head"]["id"]
             attach_url = f"{profile.server}/attachs/{stack_path}/{frame}/{index}?download=true"
             r = do_get(attach_url)
