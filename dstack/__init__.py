@@ -168,6 +168,7 @@ def pull(stack: str,
                 if filename is not None:
                     f = open(filename, "wb")
                     f.write(base64.b64decode(r["attachment"]["data"]))
+                    f.close()
                     return filename
                 else:
                     data = base64.b64decode(r["attachment"]["data"])
