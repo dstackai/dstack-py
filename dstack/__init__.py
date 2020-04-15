@@ -1,12 +1,11 @@
 import base64
-import json
 from io import StringIO
 from typing import Optional, Dict, Union
 from urllib import request
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
-from dstack.protocol import Protocol, JsonProtocol
+from dstack.protocol import Protocol, JsonProtocol, MatchException
 from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame
 
 __config_factory: ConfigFactory = YamlConfigFactory()
@@ -108,14 +107,6 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
     return frame.push()
 
 
-class MatchException(ValueError):
-    def __init__(self, params: Dict):
-        self.params = params
-
-    def __str__(self):
-        return f"Can't match parameters {self.params}"
-
-
 def pull(stack: str,
          profile: str = "default",
          filename: Optional[str] = None,
@@ -136,41 +127,26 @@ def pull(stack: str,
     Raises:
         MatchException if there is no object that matches the parameters.
     """
-
-    def do_get(url: str):
-        req = request.Request(url, method="GET")
-        req.add_header("Content-Type", f"application/json; charset=UTF-8")
-        req.add_header("Authorization", f"Bearer {profile.token}")
-        r = request.urlopen(req)
-        return json.loads(r.read(), encoding="UTF-8")
-
     config = __config_factory.get_config()
     profile = config.get_profile(profile)
+    protocol = JsonProtocol(profile.server)
     params = {} if params is None else params.copy()
     params.update(kwargs)
     stack_path = stack if stack.startswith("/") else f"{profile.user}/{stack}"
-    url = f"{profile.server}/stacks/{stack_path}"
-    res = do_get(url)
-    attachments = res["stack"]["head"]["attachments"]
-    for index, attach in enumerate(attachments):
-        if set(attach["params"].items()) == set(params.items()):
-            frame = res["stack"]["head"]["id"]
-            attach_url = f"{profile.server}/attachs/{stack_path}/{frame}/{index}?download=true"
-            r = do_get(attach_url)
-            if "data" not in r["attachment"]:
-                download_url = r["attachment"]["download_url"]
-                if filename is not None:
-                    request.urlretrieve(download_url, filename)
-                    return filename
-                else:
-                    return download_url
-            else:
-                if filename is not None:
-                    f = open(filename, "wb")
-                    f.write(base64.b64decode(r["attachment"]["data"]))
-                    f.close()
-                    return filename
-                else:
-                    data = base64.b64decode(r["attachment"]["data"])
-                    return StringIO(data.decode("utf-8"))
-    raise MatchException(params)
+    r = protocol.pull(stack_path, profile.token, params)
+    if "data" not in r["attachment"]:
+        download_url = r["attachment"]["download_url"]
+        if filename is not None:
+            request.urlretrieve(download_url, filename)
+            return filename
+        else:
+            return download_url
+    else:
+        if filename is not None:
+            f = open(filename, "wb")
+            f.write(base64.b64decode(r["attachment"]["data"]))
+            f.close()
+            return filename
+        else:
+            data = base64.b64decode(r["attachment"]["data"])
+            return StringIO(data.decode("utf-8"))

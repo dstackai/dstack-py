@@ -149,11 +149,11 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        req = {"stack": self.stack_path(), "token": self.token}
-        self.protocol.send("/stacks/access", req)
+        self.protocol.access(self.stack_path(), self.token)
 
     def send_push(self, frame: Dict) -> str:
-        res = self.protocol.send("/stacks/push", frame)
+        token = frame.pop("token")
+        res = self.protocol.push(frame, token)
         return res["url"]
 
     def stack_path(self) -> str:
