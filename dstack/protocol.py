@@ -1,5 +1,6 @@
 import base64
 import json
+import ssl
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 from urllib import request
@@ -33,13 +34,19 @@ class Protocol(ABC):
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
         pass
 
+    @abstractmethod
+    def download(self, url, filename):
+        pass
+
 
 class JsonProtocol(Protocol):
     ENCODING = "utf-8"
     MAX_SIZE = 5_000_000
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, verify: bool):
         self.url = url
+        self.verify = verify
+        self.context = ssl._create_unverified_context() if not verify else None
 
     def push(self, data: Dict, token: str) -> Dict:
         data_bytes = json.dumps(data).encode(self.ENCODING)
@@ -82,15 +89,22 @@ class JsonProtocol(Protocol):
             if token is not None:
                 req.add_header("Authorization", f"Bearer {token}")
             if data_bytes is None:
-                response = request.urlopen(req)
+                response = request.urlopen(req, context=self.context)
             else:
                 req.add_header("Content-Length", str(len(data_bytes)))
-                response = request.urlopen(req, data_bytes)
+                response = request.urlopen(req, data_bytes, context=self.context)
             return json.loads(response.read(), encoding=self.ENCODING)
         except HTTPError as e:
             raise ServerException(e.code, e.reason)
 
-    @staticmethod
-    def do_upload(upload_url: str, data: bytes):
+    def download(self, url, filename):
+        func = ssl._create_default_https_context
+        ssl._create_default_https_context = ssl._create_unverified_context
+        try:
+            request.urlretrieve(url, filename)
+        finally:
+            ssl._create_default_https_context = func
+
+    def do_upload(self, upload_url: str, data: bytes):
         req = request.Request(url=upload_url, data=data, method="PUT")
-        return request.urlopen(req)
+        return request.urlopen(req, context=self.context)

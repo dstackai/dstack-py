@@ -32,6 +32,7 @@ def config(args: Namespace):
             profile.token = token
         profile.server = args.server
         profile.user = user
+        profile.verify = not args.no_verify
         conf.add_or_replace_profile(profile)
 
     if args.remove is not None:
@@ -91,6 +92,10 @@ def main():
                                action="store_true")
     config_parser.add_argument("--force",
                                help="don't ask for confirmation",
+                               action="store_true")
+    config_parser.add_argument("--no-verify",
+                               help="do not verify SSL certificates",
+                               dest="no_verify",
                                action="store_true")
     config_group = config_parser.add_mutually_exclusive_group()
     config_group.add_argument("--profile",

@@ -1,7 +1,6 @@
 import base64
 from io import StringIO
 from typing import Optional, Dict, Union
-from urllib import request
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
@@ -129,7 +128,7 @@ def pull(stack: str,
     """
     config = __config_factory.get_config()
     profile = config.get_profile(profile)
-    protocol = JsonProtocol(profile.server)
+    protocol = config.create_protocol(profile)
     params = {} if params is None else params.copy()
     params.update(kwargs)
     stack_path = stack if stack.startswith("/") else f"{profile.user}/{stack}"
@@ -137,7 +136,7 @@ def pull(stack: str,
     if "data" not in r["attachment"]:
         download_url = r["attachment"]["download_url"]
         if filename is not None:
-            request.urlretrieve(download_url, filename)
+            protocol.download(download_url, filename)
             return filename
         else:
             return download_url
