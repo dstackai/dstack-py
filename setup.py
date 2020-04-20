@@ -18,7 +18,8 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     install_requires=[
-        "pyyaml>=5.1"
+        "pyyaml>=5.1",
+        "requests"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

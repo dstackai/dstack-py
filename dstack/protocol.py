@@ -3,14 +3,8 @@ import json
 import ssl
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
-from urllib import request
-from urllib.error import HTTPError
 
-
-class ServerException(Exception):
-    def __init__(self, status: int, message: str):
-        self.status = status
-        self.message = message
+import requests
 
 
 class MatchException(ValueError):
@@ -83,28 +77,24 @@ class JsonProtocol(Protocol):
         raise MatchException(params)
 
     def do_request(self, endpoint: str, data_bytes: Optional[bytes], token: Optional[str], method: str = "POST") -> Dict:
-        try:
-            req = request.Request(self.url + endpoint, method=method)
-            req.add_header("Content-Type", f"application/json; charset={self.ENCODING}")
-            if token is not None:
-                req.add_header("Authorization", f"Bearer {token}")
-            if data_bytes is None:
-                response = request.urlopen(req, context=self.context)
-            else:
-                req.add_header("Content-Length", str(len(data_bytes)))
-                response = request.urlopen(req, data_bytes, context=self.context)
-            return json.loads(response.read(), encoding=self.ENCODING)
-        except HTTPError as e:
-            raise ServerException(e.code, e.reason)
+        headers = {}
+        if token is not None:
+            headers["Authorization"] = f"Bearer {token}"
+        if data_bytes is None:
+            response = requests.request(method=method, url=self.url + endpoint, headers=headers, verify=self.verify)
+        else:
+            headers["Content-Type"] = f"application/json; charset={self.ENCODING}"
+            response = requests.request(method=method, url=self.url + endpoint, data=data_bytes, headers=headers, verify=self.verify)
+
+        response.raise_for_status()
+        return response.json(encoding=self.ENCODING)
 
     def download(self, url, filename):
-        func = ssl._create_default_https_context
-        ssl._create_default_https_context = ssl._create_unverified_context
-        try:
-            request.urlretrieve(url, filename)
-        finally:
-            ssl._create_default_https_context = func
+        r = requests.get(url, stream=True, verify=self.verify)
+        with open(filename, 'wb') as fd:
+            for chunk in r.iter_content(chunk_size=128):
+                fd.write(chunk)
 
     def do_upload(self, upload_url: str, data: bytes):
-        req = request.Request(url=upload_url, data=data, method="PUT")
-        return request.urlopen(req, context=self.context)
+        response = requests.put(url=upload_url, data=data, verify=self.verify)
+        response.raise_for_status()

@@ -26,7 +26,7 @@ def config(args: Namespace):
         user = get_or_ask(args, profile, "user", "User: ", secure=False)
         token = get_or_ask(args, profile, "token", "Token: ", secure=True)
         if profile is None:
-            profile = Profile(args.profile, user, token, args.server)
+            profile = Profile(args.profile, user, token, args.server, not args.no_verify)
         elif args.force or (token != profile.token and confirm(
                 f"Do you want to replace token for profile '{args.profile}'")):
             profile.token = token
