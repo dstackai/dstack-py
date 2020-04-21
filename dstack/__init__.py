@@ -84,7 +84,8 @@ def create_frame(stack: str,
 def push_frame(stack: str, obj, description: Optional[str] = None,
                params: Optional[Dict] = None,
                handler: Handler = AutoHandler(),
-               profile: str = "default") -> str:
+               profile: str = "default",
+               **kwargs) -> str:
     """Create frame in the stack, commits and pushes data in a single operation.
 
     Args:
@@ -94,6 +95,8 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         params: Optional parameters.
         handler: Specify handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
+        **kwargs: Optional parameters is an alternative to params. If both are present this one
+            will be merged into params.
     Raises:
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
@@ -102,7 +105,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
                          handler=handler,
                          profile=profile,
                          check_access=False)
-    frame.commit(obj, description, params)
+    frame.commit(obj, description, params, **kwargs)
     return frame.push()
 
 

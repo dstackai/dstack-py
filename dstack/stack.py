@@ -96,7 +96,7 @@ class StackFrame(object):
         self.timestamp = int(round(time.time() * 1000))  # milliseconds
         self.data: List[FrameData] = []
 
-    def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None):
+    def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None, **kwargs):
         """Add data to the stack frame.
 
         Args:
@@ -106,7 +106,11 @@ class StackFrame(object):
                 case of multiple data objects in the stack frame, e.g. set of plots with settings.
             description: Description of the data.
             params: Parameters associated with this data, e.g. plot settings.
+            **kwargs: Optional parameters is an alternative to params. If both are present this one will
+                be merged into params.
         """
+        params = {} if params is None else params.copy()
+        params.update(kwargs)
         data = self.handler.to_frame_data(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
