@@ -5,7 +5,7 @@ from typing import Optional, Dict, Union
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
 from dstack.protocol import Protocol, JsonProtocol, MatchException
-from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame
+from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path
 
 __config_factory: ConfigFactory = YamlConfigFactory()
 
@@ -35,7 +35,7 @@ def create_frame(stack: str,
         stack: A stack you want to use. It must be a full path to the stack e.g. `project/sub-project/plot`.
         handler: A handler which can be specified in the case of custom content,
             but by default it is AutoHandler.
-        profile: A profile refers to credentials, i.e. username and token. Default profile is named 'default'.
+        profile: A profile refers to credentials, i.e. username and token. Default profile is 'default'.
             The system is looking for specified profile as follows:
             it looks into working directory to find a configuration file (local configuration),
             if the file doesn't exist it looks into user directory to find it (global configuration).
@@ -131,8 +131,8 @@ def pull(stack: str,
     protocol = config.create_protocol(profile)
     params = {} if params is None else params.copy()
     params.update(kwargs)
-    stack_path = stack if stack.startswith("/") else f"{profile.user}/{stack}"
-    r = protocol.pull(stack_path, profile.token, params)
+    path = stack_path(profile.user, stack)
+    r = protocol.pull(path, profile.token, params)
     if "data" not in r["attachment"]:
         download_url = r["attachment"]["download_url"]
         if filename is not None:

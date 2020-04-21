@@ -1,32 +1,53 @@
 import json
 import unittest
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame
+from dstack import create_frame, configure, stack_path
 from dstack.config import Profile, InPlaceConfig
-from dstack.matplotlib import MatplotlibHandler
 from dstack.protocol import Protocol
 
 
 class TestProtocol(Protocol):
-    def __init__(self, handler: Callable[[Dict], Dict]):
+    def __init__(self, handler: Callable[[Dict, str], Dict]):
         self.exception = None
         self.handler = handler
 
-    def send(self, endpoint: str, data: Dict) -> Dict:
+    def push(self, stack: str, token: str, data: Dict) -> Dict:
+        data["stack"] = stack
+        return self.handle(data, token)
+
+    def access(self, stack: str, token: str) -> Dict:
+        return self.handle({"stack": stack}, token)
+
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
+        pass
+
+    def download(self, url, filename):
+        pass
+
+    def handle(self, data: Dict, token: str) -> Dict:
         if self.exception is not None:
             raise self.exception
         else:
-            return self.handler(data)
+            return self.handler(data, token)
 
     def broke(self, exception: Exception = RuntimeError()):
         self.exception = exception
 
     def fix(self):
         self.exception = None
+
+
+class TestConfig(InPlaceConfig):
+    def __init__(self, protocol: Protocol):
+        super().__init__()
+        self.protocol = protocol
+
+    def create_protocol(self, profile: Profile) -> Protocol:
+        return self.protocol
 
 
 class StackFrameTest(unittest.TestCase):
@@ -55,7 +76,7 @@ class StackFrameTest(unittest.TestCase):
         attachments = self.data["attachments"]
         self.assertEqual("user/plots/my_plot", self.data["stack"])
         self.assertIsNotNone(self.data["id"])
-        self.assertEqual("my_token", self.data["token"])
+        self.assertEqual("my_token", self.token)
         self.assertEqual(1, len(attachments))
         self.assertEqual("image/svg", attachments[0]["type"])
         self.assertNotIn("params", attachments[0].keys())
@@ -99,25 +120,36 @@ class StackFrameTest(unittest.TestCase):
         frame.push()
         self.assertEqual(f"other/my_plot", self.data["stack"])
 
+    def test_stack_path(self):
+        self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))
+        self.assertFailed(stack_path, "test", "плохой_стек")
+        self.assertFailed(stack_path, "test", "bad stack")
+
+    def assertFailed(self, func, *args):
+        try:
+            func(*args)
+            self.fail()
+        except ValueError:
+            pass
+
     @staticmethod
     def get_figure():
         fig = plt.figure()
         plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
         return fig
 
-    def handler(self, data: Dict) -> Dict:
+    def handler(self, data: Dict, token: str) -> Dict:
         self.data = data
+        self.token = token
         print(json.dumps(data, indent=2))
         return {"status": 0, "url": "https://api.dstack.ai/stacks/test/test"}
 
     @staticmethod
     def setup_frame(protocol: Protocol, stack: str):
-        config = InPlaceConfig()
-        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai"))
-        return create_frame(stack=stack,
-                            config=config,
-                            handler=MatplotlibHandler(),
-                            protocol=protocol)
+        config = TestConfig(protocol)
+        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai", verify=True))
+        configure(config)
+        return create_frame(stack=stack)
 
 
 if __name__ == '__main__':

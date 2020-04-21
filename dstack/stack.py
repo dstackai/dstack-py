@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
@@ -135,9 +136,7 @@ class StackFrame(object):
         self.send_push(frame)
 
     def new_frame(self) -> Dict:
-        data = {"stack": self.stack_path(),
-                "token": self.token,
-                "id": self.id,
+        data = {"id": self.id,
                 "timestamp": self.timestamp,
                 "client": "dstack-py",
                 "version": __version__,
@@ -152,12 +151,11 @@ class StackFrame(object):
         self.protocol.access(self.stack_path(), self.token)
 
     def send_push(self, frame: Dict) -> str:
-        token = frame.pop("token")
-        res = self.protocol.push(frame, token)
+        res = self.protocol.push(self.stack_path(), self.token, frame)
         return res["url"]
 
     def stack_path(self) -> str:
-        return self.stack[1:] if self.stack[0] == "/" else f"{self.user}/{self.stack}"
+        return stack_path(self.user, self.stack)
 
 
 def filter_none(d):
@@ -169,3 +167,10 @@ def filter_none(d):
 def get_os_info() -> Dict:
     info = uname()
     return {"sysname": info[0], "release": info[2], "version": info[3], "machine": info[4]}
+
+
+def stack_path(user: str, stack: str) -> str:
+    if re.match("^[a-zA-Z0-9-_/]{3,255}$", stack):
+        return stack[1:] if stack[0] == "/" else f"{user}/{stack}"
+    else:
+        raise ValueError("Stack name can contain only latin letters, digits, slash and underscore")

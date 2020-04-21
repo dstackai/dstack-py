@@ -1,6 +1,5 @@
 import base64
 import json
-import ssl
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
@@ -17,7 +16,7 @@ class MatchException(ValueError):
 
 class Protocol(ABC):
     @abstractmethod
-    def push(self, data: Dict, token: str) -> Dict:
+    def push(self, stack: str, token: str, data: Dict) -> Dict:
         pass
 
     @abstractmethod
@@ -40,9 +39,9 @@ class JsonProtocol(Protocol):
     def __init__(self, url: str, verify: bool):
         self.url = url
         self.verify = verify
-        self.context = ssl._create_unverified_context() if not verify else None
 
-    def push(self, data: Dict, token: str) -> Dict:
+    def push(self, stack: str, token: str, data: Dict) -> Dict:
+        data["stack"] = stack
         data_bytes = json.dumps(data).encode(self.ENCODING)
         size = len(data_bytes)
         if size < self.MAX_SIZE:
