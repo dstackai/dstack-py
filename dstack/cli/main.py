@@ -42,7 +42,7 @@ def config(args: Namespace):
     conf.save()
 
 
-def show_token(token: str):
+def show_token(token: str) -> str:
     n = len(token)
     return f"{'*' * (n - 4)}{token[-4:]}"
 

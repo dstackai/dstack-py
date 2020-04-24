@@ -109,22 +109,26 @@ class StackFrame(object):
             **kwargs: Optional parameters is an alternative to params. If both are present this one will
                 be merged into params.
         """
-        params = {} if params is None else params.copy()
-        params.update(kwargs)
+        params = merge_or_none(params, kwargs)
         data = self.handler.to_frame_data(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self) -> str:
+    def push(self, message: Optional[str] = None) -> str:
         """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
+        Args:
+            message: Push message to describe what's new in this revision.
         Returns:
             Stack URL.
         """
         frame = self.new_frame()
+        if message:
+            frame["message"] = message
+
         if not self.auto_push:
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
             return self.send_push(frame)
@@ -178,3 +182,9 @@ def stack_path(user: str, stack: str) -> str:
         return stack[1:] if stack[0] == "/" else f"{user}/{stack}"
     else:
         raise ValueError("Stack name can contain only latin letters, digits, slash and underscore")
+
+
+def merge_or_none(x: Optional[Dict], y: Optional[Dict]) -> Optional[Dict]:
+    x = {} if x is None else x.copy()
+    x.update(y)
+    return None if len(x) == 0 else x

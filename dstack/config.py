@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 
 import yaml
-
-from dstack.protocol import JsonProtocol, Protocol
-from dstack.stack import NoEncryption, EncryptionMethod
 
 API_SERVER = "https://api.dstack.ai"
 
@@ -99,11 +96,6 @@ class Config(ABC):
         """
         pass
 
-    def create_protocol(self, profile: Profile) -> Protocol:
-        return JsonProtocol(profile.server, profile.verify)
-
-    def get_encryption(self, profile: Profile) -> EncryptionMethod:
-        return NoEncryption()
 
 class YamlConfig(Config):
     """A class implements `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
@@ -249,3 +241,24 @@ def from_yaml_file(use_global_settings: Optional[bool] = None,
 
     with path.open() as f:
         return YamlConfig(yaml.load(f, Loader=yaml.FullLoader), path)
+
+
+__config_factory: ConfigFactory = YamlConfigFactory()
+
+
+def configure(config: Union[Config, ConfigFactory]):
+    global __config_factory
+    if isinstance(config, Config):
+        class SimpleConfigFactory(ConfigFactory):
+            def get_config(self) -> Config:
+                return config
+
+        __config_factory = SimpleConfigFactory()
+    elif isinstance(config, ConfigFactory):
+        __config_factory = config
+    else:
+        raise TypeError(f"Config or ConfigFactory expected but found {type(config)}")
+
+
+def get_config() -> Config:
+    return __config_factory.get_config()

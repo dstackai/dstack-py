@@ -5,6 +5,8 @@ from typing import Dict, Optional
 
 import requests
 
+from dstack.config import Profile
+
 
 class MatchException(ValueError):
     def __init__(self, params: Dict):
@@ -42,26 +44,23 @@ class JsonProtocol(Protocol):
 
     def push(self, stack: str, token: str, data: Dict) -> Dict:
         data["stack"] = stack
-        data_bytes = json.dumps(data).encode(self.ENCODING)
-        size = len(data_bytes)
+        size = self.length(data)
         if size < self.MAX_SIZE:
-            result = self.do_request("/stacks/push", data_bytes, token)
+            result = self.do_request("/stacks/push", data, token)
         else:
             attachments = data["attachments"]
             content = []
             for index, attach in enumerate(attachments):
                 content.append(base64.b64decode(attach.pop("data")))
                 attach["length"] = len(content[index])
-            data_bytes = json.dumps(data).encode(self.ENCODING)
-            result = self.do_request("/stacks/push", data_bytes, token)
+            result = self.do_request("/stacks/push", data, token)
             for attach in result["attachments"]:
                 self.do_upload(attach["upload_url"], content[attach["index"]])
             result = result
         return result
 
     def access(self, stack: str, token: str) -> Dict:
-        data_bytes = json.dumps({"stack": stack}).encode(self.ENCODING)
-        return self.do_request("/stacks/access", data_bytes, token)
+        return self.do_request("/stacks/access", {"stack": stack}, token)
 
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
         params = {} if params is None else params
@@ -75,16 +74,18 @@ class JsonProtocol(Protocol):
                 return self.do_request(attach_url, None, token=token, method="GET")
         raise MatchException(params)
 
-    def do_request(self, endpoint: str, data_bytes: Optional[bytes], token: Optional[str], method: str = "POST") -> Dict:
+    def do_request(self, endpoint: str, data: Optional[Dict], token: Optional[str], method: str = "POST") -> Dict:
         headers = {}
         if token is not None:
             headers["Authorization"] = f"Bearer {token}"
-        if data_bytes is None:
-            response = requests.request(method=method, url=self.url + endpoint, headers=headers, verify=self.verify)
+        if data is None:
+            response = requests.request(method=method, url=self.url + endpoint,
+                                        headers=headers, verify=self.verify)
         else:
+            data_bytes = json.dumps(data).encode(self.ENCODING)
             headers["Content-Type"] = f"application/json; charset={self.ENCODING}"
-            response = requests.request(method=method, url=self.url + endpoint, data=data_bytes, headers=headers, verify=self.verify)
-
+            response = requests.request(method=method, url=self.url + endpoint, data=data_bytes,
+                                        headers=headers, verify=self.verify)
         response.raise_for_status()
         return response.json(encoding=self.ENCODING)
 
@@ -97,3 +98,29 @@ class JsonProtocol(Protocol):
     def do_upload(self, upload_url: str, data: bytes):
         response = requests.put(url=upload_url, data=data, verify=self.verify)
         response.raise_for_status()
+
+    def length(self, data: Dict):
+        return len(json.dumps(data).encode(self.ENCODING))
+
+
+class ProtocolFactory(ABC):
+    @abstractmethod
+    def create_protocol(self, profile: Profile) -> Protocol:
+        pass
+
+
+class JsonProtocolFactory(ProtocolFactory):
+    def create_protocol(self, profile: Profile) -> Protocol:
+        return JsonProtocol(profile.server, profile.verify)
+
+
+__protocol_factory = JsonProtocolFactory()
+
+
+def setup_protocol(protocol_factory: ProtocolFactory):
+    global __protocol_factory
+    __protocol_factory = protocol_factory
+
+
+def create_protocol(profile: Profile) -> Protocol:
+    return __protocol_factory.create_protocol(profile)

@@ -3,25 +3,40 @@ from io import StringIO
 from typing import Optional, Dict, Union
 
 from dstack.auto import AutoHandler
-from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException
-from dstack.protocol import Protocol, JsonProtocol, MatchException
-from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path
+from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException, get_config, \
+    Profile
+from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
+from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none
 
-__config_factory: ConfigFactory = YamlConfigFactory()
 
+def push_frame(stack: str, obj, description: Optional[str] = None,
+               message: Optional[str] = None,
+               params: Optional[Dict] = None,
+               handler: Handler = AutoHandler(),
+               profile: str = "default",
+               **kwargs) -> str:
+    """Create frame in the stack, commits and pushes data in a single operation.
 
-def configure(config: Union[Config, ConfigFactory]):
-    global __config_factory
-    if isinstance(config, Config):
-        class SimpleConfigFactory(ConfigFactory):
-            def get_config(self) -> Config:
-                return config
-
-        __config_factory = SimpleConfigFactory()
-    elif isinstance(config, ConfigFactory):
-        __config_factory = config
-    else:
-        raise TypeError(f"Config or ConfigFactory expected but found {type(config)}")
+    Args:
+        stack: A stack you want to commit and push to.
+        obj: Object to commit and push, e.g. plot.
+        description: Optional description of the object.
+        message: Push message to describe what's new in this revision.
+        params: Optional parameters.
+        handler: Specify handler to handle the object, by default `AutoHandler` will be used.
+        profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
+        **kwargs: Optional parameters is an alternative to params. If both are present this one
+            will be merged into params.
+    Raises:
+        ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
+        ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
+    """
+    frame = create_frame(stack=stack,
+                         handler=handler,
+                         profile=profile,
+                         check_access=False)
+    frame.commit(obj, description, params, **kwargs)
+    return frame.push(message)
 
 
 def create_frame(stack: str,
@@ -65,7 +80,7 @@ def create_frame(stack: str,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
-    config = __config_factory.get_config()
+    config = get_config()
     profile = config.get_profile(profile)
 
     frame = StackFrame(stack=stack,
@@ -73,40 +88,12 @@ def create_frame(stack: str,
                        token=profile.token,
                        handler=handler,
                        auto_push=auto_push,
-                       protocol=config.create_protocol(profile),
-                       encryption=config.get_encryption(profile))
+                       protocol=create_protocol(profile),
+                       encryption=get_encryption(profile))
     if check_access:
         frame.send_access()
 
     return frame
-
-
-def push_frame(stack: str, obj, description: Optional[str] = None,
-               params: Optional[Dict] = None,
-               handler: Handler = AutoHandler(),
-               profile: str = "default",
-               **kwargs) -> str:
-    """Create frame in the stack, commits and pushes data in a single operation.
-
-    Args:
-        stack: A stack you want to commit and push to.
-        obj: Object to commit and push, e.g. plot.
-        description: Optional description of the object.
-        params: Optional parameters.
-        handler: Specify handler to handle the object, by default `AutoHandler` will be used.
-        profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
-        **kwargs: Optional parameters is an alternative to params. If both are present this one
-            will be merged into params.
-    Raises:
-        ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
-        ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
-    """
-    frame = create_frame(stack=stack,
-                         handler=handler,
-                         profile=profile,
-                         check_access=False)
-    frame.commit(obj, description, params, **kwargs)
-    return frame.push()
 
 
 def pull(stack: str,
@@ -129,11 +116,10 @@ def pull(stack: str,
     Raises:
         MatchException if there is no object that matches the parameters.
     """
-    config = __config_factory.get_config()
+    config = get_config()
     profile = config.get_profile(profile)
-    protocol = config.create_protocol(profile)
-    params = {} if params is None else params.copy()
-    params.update(kwargs)
+    protocol = create_protocol(profile)
+    params = merge_or_none(params, kwargs)
     path = stack_path(profile.user, stack)
     r = protocol.pull(path, profile.token, params)
     if "data" not in r["attachment"]:
@@ -152,3 +138,7 @@ def pull(stack: str,
         else:
             data = base64.b64decode(r["attachment"]["data"])
             return StringIO(data.decode("utf-8"))
+
+
+def get_encryption(profile: Profile) -> EncryptionMethod:
+    return NoEncryption()

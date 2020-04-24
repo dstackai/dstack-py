@@ -32,7 +32,7 @@ class TestYamlConfig(TestCase):
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         # shouldn't raise an exception
         conf.list_profiles()
-        conf.add_or_replace_profile(Profile("default", "user", "test_token", API_SERVER))
+        conf.add_or_replace_profile(Profile("default", "user", "test_token", API_SERVER, verify=True))
         conf.save()
         conf = from_yaml_file(dstack_dir=self.dstack_dir)
         self.assertEqual(1, len(conf.list_profiles()))
