@@ -5,6 +5,7 @@ from typing import Dict, Optional
 
 import requests
 
+import dstack.logger as log
 from dstack.config import Profile
 
 
@@ -75,28 +76,47 @@ class JsonProtocol(Protocol):
         raise MatchException(params)
 
     def do_request(self, endpoint: str, data: Optional[Dict], token: Optional[str], method: str = "POST") -> Dict:
+        url = self.url + endpoint
+
+        event_id = log.uuid()
+        log.debug(event_id=event_id, func=log.erase_sensitive_data, url=url, method=method, data=data)
+
         headers = {}
         if token is not None:
             headers["Authorization"] = f"Bearer {token}"
         if data is None:
-            response = requests.request(method=method, url=self.url + endpoint,
+            response = requests.request(method=method, url=url,
                                         headers=headers, verify=self.verify)
         else:
             data_bytes = json.dumps(data).encode(self.ENCODING)
             headers["Content-Type"] = f"application/json; charset={self.ENCODING}"
-            response = requests.request(method=method, url=self.url + endpoint, data=data_bytes,
+            response = requests.request(method=method, url=url, data=data_bytes,
                                         headers=headers, verify=self.verify)
+
+        log.debug(event_id=event_id, func=log.erase_token, request_headers=response.request.headers)
+        log.debug(event_id=event_id, func=log.ensure_json_serialization, response_headers=response.headers)
+
         response.raise_for_status()
         return response.json(encoding=self.ENCODING)
 
     def download(self, url, filename):
         r = requests.get(url, stream=True, verify=self.verify)
+
+        log.debug(func=log.ensure_json_serialization, url=url, reponse_headers=r.headers)
+
         with open(filename, 'wb') as fd:
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in r.iter_content(chunk_size=65536):
                 fd.write(chunk)
 
     def do_upload(self, upload_url: str, data: bytes):
+        event_id = log.uuid()
+        log.debug(event_id=event_id, url=upload_url, length=len(data))
+
         response = requests.put(url=upload_url, data=data, verify=self.verify)
+
+        log.debug(event_id=event_id, func=log.ensure_json_serialization, request_headers=response.request.headers)
+        log.debug(event_id=event_id, func=log.ensure_json_serialization, response_headers=response.headers)
+
         response.raise_for_status()
 
     def length(self, data: Dict):

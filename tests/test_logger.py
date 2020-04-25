@@ -85,7 +85,7 @@ class TestLogger(TestBase):
         my_logger = log.InMemoryLogger()
         # test default level ERASE_BINARY_DATA | ERASE_PARAM_VALUES
         log.enable(logger=my_logger)
-        log.debug(data=d, extra="extra")
+        log.debug(func=log.erase_sensitive_data, data=d, extra="extra")
         d1 = json.loads(my_logger.io.getvalue())
         data = d1["data"]
         for i in [0, 1]:
@@ -138,3 +138,13 @@ class TestLogger(TestBase):
         self.assertEqual("My first plot", d["attachments"][0]["description"])
         self.assertFalse(d["attachments"][0]["data"].startswith("erased"))
         self.assertEqual("user/my_stack", d["stack"])
+
+    def test_erase_token(self):
+        headers = {"User-Agent": "python-requests/2.23.0", 
+                   "Accept-Encoding": "gzip, deflate", 
+                   "Accept": "*/*", 
+                   "Connection": "keep-alive", 
+                   "Authorization": "Bearer 22231d03-2ea7-22ac-1177-11119b347e0f", 
+                   "Content-Type": "application/json; charset=utf-8", 
+                   "Content-Length": "20718"}
+        self.assertEqual("Bearer ********************************7e0f", log.erase_token(headers)["Authorization"])

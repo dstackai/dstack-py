@@ -4,7 +4,8 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, MutableMapping, Callable, Any
+from uuid import uuid4
 
 from dstack.config import YamlConfig, get_config
 
@@ -50,17 +51,27 @@ __erasure_flags: int = ERASE_BINARY_DATA | ERASE_PARAM_VALUES
 __logger: Optional[Logger] = None
 
 
-def debug(**kwargs) -> bool:
+def uuid() -> str:
+    return uuid4().__str__()
+
+
+def debug(event_id: Optional[str] = uuid(), func: Optional[Callable] = None, **kwargs) -> bool:
     if __logger:
-        line = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-        for key, value in kwargs.items():
-            if key == "data":
-                value = erase_sensitive_data(value, __erasure_flags)
-            line[key] = value
+        line = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "event_id": event_id}
+        if func:
+            for key, value in kwargs.items():
+                line[key] = func(value)
+        else:
+            line.update(kwargs)
         __logger.log(line)
         return True
     else:
         return False
+
+
+def is_debug() -> bool:
+    return __logger is not None
 
 
 def enable(erasure_flags: int = ERASE_BINARY_DATA | ERASE_PARAM_VALUES,
@@ -86,7 +97,23 @@ def get_logger():
     return __logger
 
 
-def erase_sensitive_data(data: Dict, flags: int) -> Dict:
+def hide_token(token: str) -> str:
+    n = len(token)
+    return f"{'*' * (n - 4)}{token[-4:]}"
+
+
+def erase_token(headers: MutableMapping) -> Dict:
+    result = {}
+    for k, v in headers.items():
+        if k == "Authorization":
+            bearer, token = v.split()
+            result[k] = f"{bearer} {hide_token(token)}"
+        else:
+            result[k] = v
+    return result
+
+
+def erase_sensitive_data(data: Dict, flags: int = __erasure_flags) -> Dict:
     def erase(d: Dict, name: str):
         obj = d.get(name, None)
 
@@ -128,3 +155,11 @@ def erase_sensitive_data(data: Dict, flags: int) -> Dict:
         erase(result, "stack")
 
     return result
+
+
+def ensure_json_serialization(obj: Any) -> Any:
+    if isinstance(obj, MutableMapping):
+        return dict(obj.items())
+    else:
+        return obj
+

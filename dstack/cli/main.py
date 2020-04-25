@@ -4,6 +4,7 @@ from getpass import getpass
 from typing import Optional
 
 from dstack.config import from_yaml_file, Profile, API_SERVER
+from dstack.logger import hide_token
 from dstack.version import __version__ as version
 
 
@@ -16,7 +17,7 @@ def config(args: Namespace):
             profile = profiles[name]
             print(name)
             print(f"\tUser: {profile.user}")
-            print(f"\tToken: {show_token(profile.token)}")
+            print(f"\tToken: {hide_token(profile.token)}")
             if profile.server != API_SERVER:
                 print(f"\tServer: {profile.server}")
         return
@@ -40,11 +41,6 @@ def config(args: Namespace):
             conf.remove_profile(args.remove)
 
     conf.save()
-
-
-def show_token(token: str) -> str:
-    n = len(token)
-    return f"{'*' * (n - 4)}{token[-4:]}"
 
 
 def confirm(message: str) -> bool:
