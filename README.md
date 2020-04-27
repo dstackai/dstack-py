@@ -80,7 +80,7 @@ will be merged to `params` dictionary. So, the following line
 ```python
 frame.commit(my_plot, "My plot description", params={"My parameter": 0.02}, other=True)
 ```
-is the same as
+produces the same result as this one:
 ```python
 frame.commit(my_plot, "My plot description", params={"My parameter": 0.02, "other": True})
 ```
