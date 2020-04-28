@@ -106,6 +106,7 @@ In some cases you not only want to store dataset but retrieve it. You can `pull`
 object from the stack:
 ```python
 import pandas as pd
+from dstack import pull
 from dstack import push_frame
 df = pd.read_csv(pull("my_data"))
 ```
