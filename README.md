@@ -107,7 +107,6 @@ object from the stack:
 ```python
 import pandas as pd
 from dstack import pull
-from dstack import push_frame
 df = pd.read_csv(pull("my_data"))
 ```
 As in the case of plots you can use parameters for data frames too. You can also use
