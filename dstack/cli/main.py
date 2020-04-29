@@ -4,6 +4,7 @@ from getpass import getpass
 from typing import Optional
 
 from dstack.config import from_yaml_file, Profile, API_SERVER
+from dstack.logger import hide_token
 from dstack.version import __version__ as version
 
 
@@ -16,7 +17,7 @@ def config(args: Namespace):
             profile = profiles[name]
             print(name)
             print(f"\tUser: {profile.user}")
-            print(f"\tToken: {show_token(profile.token)}")
+            print(f"\tToken: {hide_token(profile.token)}")
             if profile.server != API_SERVER:
                 print(f"\tServer: {profile.server}")
         return
@@ -26,12 +27,13 @@ def config(args: Namespace):
         user = get_or_ask(args, profile, "user", "User: ", secure=False)
         token = get_or_ask(args, profile, "token", "Token: ", secure=True)
         if profile is None:
-            profile = Profile(args.profile, user, token, args.server)
+            profile = Profile(args.profile, user, token, args.server, not args.no_verify)
         elif args.force or (token != profile.token and confirm(
                 f"Do you want to replace token for profile '{args.profile}'")):
             profile.token = token
         profile.server = args.server
         profile.user = user
+        profile.verify = not args.no_verify
         conf.add_or_replace_profile(profile)
 
     if args.remove is not None:
@@ -39,11 +41,6 @@ def config(args: Namespace):
             conf.remove_profile(args.remove)
 
     conf.save()
-
-
-def show_token(token: str):
-    n = len(token)
-    return f"{'*' * (n - 4)}{token[-4:]}"
 
 
 def confirm(message: str) -> bool:
@@ -91,6 +88,10 @@ def main():
                                action="store_true")
     config_parser.add_argument("--force",
                                help="don't ask for confirmation",
+                               action="store_true")
+    config_parser.add_argument("--no-verify",
+                               help="do not verify SSL certificates",
+                               dest="no_verify",
                                action="store_true")
     config_group = config_parser.add_mutually_exclusive_group()
     config_group.add_argument("--profile",

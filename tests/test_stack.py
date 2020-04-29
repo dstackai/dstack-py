@@ -1,26 +1,37 @@
-import json
 import unittest
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame
-from dstack.config import Profile, InPlaceConfig
-from dstack.matplotlib import MatplotlibHandler
-from dstack.protocol import Protocol
+from dstack import create_frame, stack_path
+from dstack.config import Profile, InPlaceConfig, configure
+from dstack.protocol import Protocol, ProtocolFactory, setup_protocol
 
 
 class TestProtocol(Protocol):
-    def __init__(self, handler: Callable[[Dict], Dict]):
+    def __init__(self, handler: Callable[[Dict, str], Dict]):
         self.exception = None
         self.handler = handler
 
-    def send(self, endpoint: str, data: Dict) -> Dict:
+    def push(self, stack: str, token: str, data: Dict) -> Dict:
+        data["stack"] = stack
+        return self.handle(data, token)
+
+    def access(self, stack: str, token: str) -> Dict:
+        return self.handle({"stack": stack}, token)
+
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
+        pass
+
+    def download(self, url, filename):
+        pass
+
+    def handle(self, data: Dict, token: str) -> Dict:
         if self.exception is not None:
             raise self.exception
         else:
-            return self.handler(data)
+            return self.handler(data, token)
 
     def broke(self, exception: Exception = RuntimeError()):
         self.exception = exception
@@ -29,19 +40,43 @@ class TestProtocol(Protocol):
         self.exception = None
 
 
-class StackFrameTest(unittest.TestCase):
+class TestBase(unittest.TestCase):
+    def __init__(self, method: str = "runTest"):
+        super().__init__(method)
+        self.protocol = TestProtocol(self.handler)
+
+    def handler(self, data: Dict, token: str) -> Dict:
+        self.data = data
+        self.token = token
+        return {"status": 0, "url": "https://api.dstack.ai/stacks/test/test"}
+
+    def setUp(self):
+        config = InPlaceConfig()
+        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai", verify=True))
+        configure(config)
+        setup_protocol(TestProtocolFactory(self.protocol, handler=self.handler))
+
+
+class TestProtocolFactory(ProtocolFactory):
+    def __init__(self, protocol, handler: Callable[[Dict, str], Dict]):
+        self.handler = handler
+        self.protocol = protocol
+
+    def create_protocol(self, profile: Profile) -> Protocol:
+        return self.protocol
+
+
+class StackFrameTest(TestBase):
     def test_cant_send_access(self):
-        protocol = TestProtocol(self.handler)
-        protocol.broke()
+        self.protocol.broke()
         try:
-            self.setup_frame(protocol, stack="plots/my_plot")
+            create_frame(stack="plots/my_plot")
             self.fail("Error must be raised in send_access()")
         except RuntimeError:
             pass
 
     def test_single_plot(self):
-        protocol = TestProtocol(self.handler)
-        frame = self.setup_frame(protocol, stack="plots/my_plot")
+        frame = create_frame(stack="plots/my_plot")
         t = np.arange(0.0, 2.0, 0.01)
         s = 1 + np.sin(2 * np.pi * t)
         fig, ax = plt.subplots()
@@ -55,15 +90,14 @@ class StackFrameTest(unittest.TestCase):
         attachments = self.data["attachments"]
         self.assertEqual("user/plots/my_plot", self.data["stack"])
         self.assertIsNotNone(self.data["id"])
-        self.assertEqual("my_token", self.data["token"])
+        self.assertEqual("my_token", self.token)
         self.assertEqual(1, len(attachments))
         self.assertEqual("image/svg", attachments[0]["type"])
         self.assertNotIn("params", attachments[0].keys())
         self.assertEqual(my_desc, attachments[0]["description"])
 
     def test_multiple_plots(self):
-        protocol = TestProtocol(self.handler)
-        frame = self.setup_frame(protocol, stack="plots/my_plot")
+        frame = create_frame(stack="plots/my_plot")
         p = np.arange(0.0, 1.0, 0.1)
 
         for idx, phase in enumerate(p):
@@ -86,38 +120,34 @@ class StackFrameTest(unittest.TestCase):
             self.assertEqual(phase, att["params"]["phase"])
 
     def test_stack_relative_path(self):
-        protocol = TestProtocol(self.handler)
-        frame = self.setup_frame(protocol, stack="plots/my_plot")
+        frame = create_frame(stack="plots/my_plot")
         frame.commit(self.get_figure())
         frame.push()
         self.assertEqual(f"user/plots/my_plot", self.data["stack"])
 
     def test_stack_absolute_path(self):
-        protocol = TestProtocol(self.handler)
-        frame = self.setup_frame(protocol, stack="/other/my_plot")
+        frame = create_frame(stack="/other/my_plot")
         frame.commit(self.get_figure())
         frame.push()
         self.assertEqual(f"other/my_plot", self.data["stack"])
+
+    def test_stack_path(self):
+        self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))
+        self.assertFailed(stack_path, "test", "плохой_стек")
+        self.assertFailed(stack_path, "test", "bad stack")
+
+    def assertFailed(self, func, *args):
+        try:
+            func(*args)
+            self.fail()
+        except ValueError:
+            pass
 
     @staticmethod
     def get_figure():
         fig = plt.figure()
         plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
         return fig
-
-    def handler(self, data: Dict) -> Dict:
-        self.data = data
-        print(json.dumps(data, indent=2))
-        return {"status": 0, "url": "https://api.dstack.ai/stacks/test/test"}
-
-    @staticmethod
-    def setup_frame(protocol: Protocol, stack: str):
-        config = InPlaceConfig()
-        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai"))
-        return create_frame(stack=stack,
-                            config=config,
-                            handler=MatplotlibHandler(),
-                            protocol=protocol)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
@@ -95,7 +96,7 @@ class StackFrame(object):
         self.timestamp = int(round(time.time() * 1000))  # milliseconds
         self.data: List[FrameData] = []
 
-    def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None):
+    def commit(self, obj, description: Optional[str] = None, params: Optional[Dict] = None, **kwargs):
         """Add data to the stack frame.
 
         Args:
@@ -105,21 +106,29 @@ class StackFrame(object):
                 case of multiple data objects in the stack frame, e.g. set of plots with settings.
             description: Description of the data.
             params: Parameters associated with this data, e.g. plot settings.
+            **kwargs: Optional parameters is an alternative to params. If both are present this one will
+                be merged into params.
         """
+        params = merge_or_none(params, kwargs)
         data = self.handler.to_frame_data(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self) -> str:
+    def push(self, message: Optional[str] = None) -> str:
         """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
+        Args:
+            message: Push message to describe what's new in this revision.
         Returns:
             Stack URL.
         """
         frame = self.new_frame()
+        if message:
+            frame["message"] = message
+
         if not self.auto_push:
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
             return self.send_push(frame)
@@ -135,9 +144,7 @@ class StackFrame(object):
         self.send_push(frame)
 
     def new_frame(self) -> Dict:
-        data = {"stack": self.stack_path(),
-                "token": self.token,
-                "id": self.id,
+        data = {"id": self.id,
                 "timestamp": self.timestamp,
                 "client": "dstack-py",
                 "version": __version__,
@@ -149,15 +156,14 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        req = {"stack": self.stack_path(), "token": self.token}
-        self.protocol.send("/stacks/access", req)
+        self.protocol.access(self.stack_path(), self.token)
 
     def send_push(self, frame: Dict) -> str:
-        res = self.protocol.send("/stacks/push", frame)
+        res = self.protocol.push(self.stack_path(), self.token, frame)
         return res["url"]
 
     def stack_path(self) -> str:
-        return self.stack[1:] if self.stack[0] == "/" else f"{self.user}/{self.stack}"
+        return stack_path(self.user, self.stack)
 
 
 def filter_none(d):
@@ -169,3 +175,16 @@ def filter_none(d):
 def get_os_info() -> Dict:
     info = uname()
     return {"sysname": info[0], "release": info[2], "version": info[3], "machine": info[4]}
+
+
+def stack_path(user: str, stack: str) -> str:
+    if re.match("^[a-zA-Z0-9-_/]{3,255}$", stack):
+        return stack[1:] if stack[0] == "/" else f"{user}/{stack}"
+    else:
+        raise ValueError("Stack name can contain only latin letters, digits, slash and underscore")
+
+
+def merge_or_none(x: Optional[Dict], y: Optional[Dict]) -> Optional[Dict]:
+    x = {} if x is None else x.copy()
+    x.update(y)
+    return None if len(x) == 0 else x

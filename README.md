@@ -29,6 +29,8 @@ In this case, the **dstack profile** name will be `default`. You can change it b
 
 By default, the configuration profile is stored locally, i.e. in your working directory: `<WORKING_DIRECTORY>/.dstack/config.yaml`
 
+If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
+
 See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information about command line tools or type `dstack config --help`.
 
 ## Publishing simple plots
@@ -64,10 +66,51 @@ frame = create_frame("line_plot")
 coeff = [0.5, 1.0, 1.5, 2.0]
 
 for c in coeff:
-    frame.commit(line_plot(c), f"Line plot with the coefficient of {c}", {"Coefficient": c})
+    frame.commit(line_plot(c), f"Line plot with the coefficient of {c}", Coefficient=c)
 
 frame.push()
 ```
+In case when parameter's name contains space characters, `params` dictionary argument must be used, e.g.:
+```python
+frame.commit(my_plot, "My plot description", params={"My parameter": 0.02})
+```  
+Of course, you can combine two approaches together, it can be especially useful in case of 
+comprehensive frames with multiple parameters. In this case parameters which are passed by named arguments
+will be merged to `params` dictionary. So, the following line
+```python
+frame.commit(my_plot, "My plot description", params={"My parameter": 0.02}, other=True)
+```
+produces the same result as this one:
+```python
+frame.commit(my_plot, "My plot description", params={"My parameter": 0.02, "other": True})
+```
+You can use `push` with message to add information related 
+to this particular revision: `push("Fix log scale")`. Function `push_frame` can accept message as well.
+
+## Working with datasets
+The **dstack**  package can be used not only publishing plots from popular visualizations packages,
+bit to publish [pandas](https://pandas.pydata.org/) data frame as well. How you can do it?
+It can be done in the same way as in the case of plots by replacing plot to pandas data frame object.
+Here is an example:
+```python
+import pandas as pd
+from dstack import push_frame
+raw_data = {"first_name": ["John", "Donald", "Maryam", "Don", "Andrey"], 
+        "last_name": ["Milnor", "Knuth", "Mirzakhani", "Zagier", "Okunkov"], 
+        "birth_year": [1931, 1938, 1977, 1951, 1969], 
+        "school": ["Princeton", "Stanford", "Stanford", "MPIM", "Princeton"]}
+df = pd.DataFrame(raw_data, columns = ["first_name", "last_name", "birth_year", "school"])
+push_frame("my_data", df, "DataFrame example")
+```
+In some cases you not only want to store dataset but retrieve it. You can `pull` data frame
+object from the stack:
+```python
+import pandas as pd
+from dstack import pull
+df = pd.read_csv(pull("my_data"))
+```
+As in the case of plots you can use parameters for data frames too. You can also use
+data frames and plots in the same frame (with certain parameters).
 
 ## Documentation
 

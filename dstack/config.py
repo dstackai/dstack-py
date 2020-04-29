@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 
 import yaml
-
-from dstack.protocol import JsonProtocol, Protocol
-from dstack.stack import NoEncryption, EncryptionMethod
 
 API_SERVER = "https://api.dstack.ai"
 
@@ -25,9 +22,10 @@ class Profile(object):
          user: Username.
          token:  A token of selected profile.
          server: API endpoint.
+         verify: Enable SSL certificate verification.
     """
 
-    def __init__(self, name: str, user: str, token: str, server: str):
+    def __init__(self, name: str, user: str, token: str, server: str, verify: bool):
         """Create a profile object.
 
         Args:
@@ -40,6 +38,7 @@ class Profile(object):
         self.user = user
         self.token = token
         self.server = server
+        self.verify = verify
 
 
 class Config(ABC):
@@ -97,11 +96,6 @@ class Config(ABC):
         """
         pass
 
-    def create_protocol(self, profile: Profile) -> Protocol:
-        return JsonProtocol(profile.server)
-
-    def get_encryption(self, profile: Profile) -> EncryptionMethod:
-        return NoEncryption()
 
 class YamlConfig(Config):
     """A class implements `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
@@ -147,7 +141,8 @@ class YamlConfig(Config):
         if profile is None:
             return None
         else:
-            return Profile(name, profile["user"], profile["token"], profile.get("server", API_SERVER))
+            return Profile(name, profile["user"], profile["token"],
+                           profile.get("server", API_SERVER), profile.get("verify", True))
 
     def add_or_replace_profile(self, profile: Profile):
         """Add or replaces existing profile.
@@ -162,6 +157,8 @@ class YamlConfig(Config):
         update = {"token": profile.token, "user": profile.user}
         if profile.server != API_SERVER:
             update["server"] = profile.server
+        if not profile.verify:
+            update["verify"] = profile.verify
         profiles[profile.name] = update
         self.yaml_data["profiles"] = profiles
 
@@ -244,3 +241,24 @@ def from_yaml_file(use_global_settings: Optional[bool] = None,
 
     with path.open() as f:
         return YamlConfig(yaml.load(f, Loader=yaml.FullLoader), path)
+
+
+__config_factory: ConfigFactory = YamlConfigFactory()
+
+
+def configure(config: Union[Config, ConfigFactory]):
+    global __config_factory
+    if isinstance(config, Config):
+        class SimpleConfigFactory(ConfigFactory):
+            def get_config(self) -> Config:
+                return config
+
+        __config_factory = SimpleConfigFactory()
+    elif isinstance(config, ConfigFactory):
+        __config_factory = config
+    else:
+        raise TypeError(f"Config or ConfigFactory expected but found {type(config)}")
+
+
+def get_config() -> Config:
+    return __config_factory.get_config()
