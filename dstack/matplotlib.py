@@ -1,13 +1,14 @@
 import io
 from typing import Dict, Optional
 
+from dstack import BytesContent
 from dstack.stack import Handler, FrameData
 
 
 class MatplotlibHandler(Handler):
     """Handler to deal with matplotlib charts."""
 
-    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Convert matplotlib figure to frame data.
 
         Notes:
@@ -23,4 +24,4 @@ class MatplotlibHandler(Handler):
         """
         buf = io.BytesIO()
         obj.savefig(buf, format="svg")
-        return FrameData(buf, "image/svg", description, params)
+        return FrameData(BytesContent(buf), "image/svg", description, params)

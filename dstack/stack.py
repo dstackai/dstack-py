@@ -1,12 +1,11 @@
-import base64
-import io
 import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
+from dstack.content import Content
 from dstack.protocol import Protocol
 from dstack.version import __version__
 
@@ -19,7 +18,7 @@ class FrameData:
     Any handler must produce `FrameData` from raw data, like Matplotlib `Figure` or any other chart object.
     """
 
-    def __init__(self, data: io.BytesIO,
+    def __init__(self, data: Content,
                  media_type: str,
                  description: Optional[str],
                  params: Optional[Dict],
@@ -33,7 +32,7 @@ class FrameData:
             settings: Optional settings are usually used to store libraries versions or extra information
                 required to display data correctly.
         """
-        self.data = base64.b64encode(data.getvalue()).decode()
+        self.data = data  # base64.b64encode(data.getvalue()).decode()
         self.type = media_type
         self.description = description
         self.params = params
@@ -43,7 +42,7 @@ class FrameData:
 class Handler(ABC):
 
     @abstractmethod
-    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Convert data object to appropriate format.
         Args:
             obj: A data which is needed to be converted, e.g. plot.
@@ -55,6 +54,9 @@ class Handler(ABC):
             Frame data.
         """
         pass
+
+    def decode(self, data: FrameData) -> Any:
+        return None
 
 
 class EncryptionMethod(ABC):
@@ -110,7 +112,7 @@ class StackFrame(object):
                 be merged into params.
         """
         params = merge_or_none(params, kwargs)
-        data = self.handler.to_frame_data(obj, description, params)
+        data = self.handler.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
         if self.auto_push:

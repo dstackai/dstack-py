@@ -1,8 +1,8 @@
-from io import BytesIO
 from typing import Dict, Optional
 
 from plotly import __version__ as plotly_version
 
+from dstack import BytesContent
 from dstack.stack import Handler, FrameData
 
 
@@ -22,7 +22,7 @@ class PlotlyHandler(Handler):
         """
         self.plotly_js_version = plotly_js_version
 
-    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Build frame data object from Plotly figure.
 
         Args:
@@ -34,5 +34,5 @@ class PlotlyHandler(Handler):
             Frame data.
         """
         json = obj.to_json()
-        return FrameData(BytesIO(json.encode("utf-8")), "plotly", description, params,
+        return FrameData(BytesContent(json.encode("utf-8")), "plotly", description, params,
                          {"plotly_version": plotly_version, "plotly_js_version": self.plotly_js_version})

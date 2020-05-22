@@ -1,12 +1,13 @@
 import base64
 from io import StringIO
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, Any
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException, get_config, \
     Profile
+from dstack.content import StreamContent, BytesContent
 from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
-from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none
+from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
@@ -96,10 +97,10 @@ def create_frame(stack: str,
     return frame
 
 
-def pull(stack: str,
-         profile: str = "default",
-         filename: Optional[str] = None,
-         params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
+def pull1(stack: str,
+          profile: str = "default",
+          filename: Optional[str] = None,
+          params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
     """Pull data object from stack frame (head) which matches specified parameters.
 
     Args:
@@ -116,29 +117,58 @@ def pull(stack: str,
     Raises:
         MatchException if there is no object that matches the parameters.
     """
-    config = get_config()
-    profile = config.get_profile(profile)
-    protocol = create_protocol(profile)
-    params = merge_or_none(params, kwargs)
-    path = stack_path(profile.user, stack)
-    r = protocol.pull(path, profile.token, params)
-    if "data" not in r["attachment"]:
-        download_url = r["attachment"]["download_url"]
-        if filename is not None:
-            protocol.download(download_url, filename)
-            return filename
-        else:
-            return download_url
+    # profile = get_config().get_profile(profile)
+    # protocol = create_protocol(profile)
+    # params = merge_or_none(params, kwargs)
+    # path = stack_path(profile.user, stack)
+    # r = protocol.pull(path, profile.token, params)
+    # if "data" not in r["attachment"]:
+    #     download_url = r["attachment"]["download_url"]
+    #     if filename is not None:
+    #         protocol.download(download_url, filename)
+    #         return filename
+    #     else:
+    #         return download_url
+    # else:
+    #     if filename is not None:
+    #         f = open(filename, "wb")
+    #         f.write(base64.b64decode(r["attachment"]["data"]))
+    #         f.close()
+    #         return filename
+    #     else:
+    #         data = base64.b64decode(r["attachment"]["data"])
+    #         return StringIO(data.decode("utf-8"))
+    d = pull_raw(stack, profile, params, **kwargs)
+    if filename is not None:
+        with open(filename, "wb") as f:
+            f.write(d.data.value())
+        return filename
     else:
-        if filename is not None:
-            f = open(filename, "wb")
-            f.write(base64.b64decode(r["attachment"]["data"]))
-            f.close()
-            return filename
-        else:
-            data = base64.b64decode(r["attachment"]["data"])
-            return StringIO(data.decode("utf-8"))
+        return StringIO(d.data.value().decode("utf-8"))
 
 
 def get_encryption(profile: Profile) -> EncryptionMethod:
     return NoEncryption()
+
+
+def pull_raw(stack: str,
+             profile: str = "default",
+             params: Optional[Dict] = None, **kwargs) -> FrameData:
+    profile = get_config().get_profile(profile)
+    protocol = create_protocol(profile)
+    params = merge_or_none(params, kwargs)
+    path = stack_path(profile.user, stack)
+    res = protocol.pull(path, profile.token, params)
+    attach = res["attachment"]
+
+    data = \
+        BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
+        StreamContent(*protocol.download(attach["download_url"]))
+
+    return FrameData(data, attach["type"], attach["description"], params, attach.get("settings", None))
+
+
+def pull(stack: str,
+         profile: str = "default",
+         params: Optional[Dict] = None, **kwargs) -> Any:
+    return AutoHandler().decode(pull_raw(stack, profile, params, **kwargs))

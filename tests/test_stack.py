@@ -24,7 +24,7 @@ class TestProtocol(Protocol):
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
         pass
 
-    def download(self, url, filename):
+    def download(self, url):
         pass
 
     def handle(self, data: Dict, token: str) -> Dict:

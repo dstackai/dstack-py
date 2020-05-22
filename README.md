@@ -106,8 +106,8 @@ In some cases you not only want to store dataset but retrieve it. You can `pull`
 object from the stack:
 ```python
 import pandas as pd
-from dstack import pull
-df = pd.read_csv(pull("my_data"))
+from dstack import pull1
+df = pd.read_csv(pull1("my_data"))
 ```
 As in the case of plots you can use parameters for data frames too. You can also use
 data frames and plots in the same frame (with certain parameters).
