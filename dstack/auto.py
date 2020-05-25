@@ -1,8 +1,8 @@
-import re
+import inspect
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
-from dstack.stack import Handler, FrameData
+from dstack.handler import Handler, FrameData
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -21,7 +21,8 @@ class AutoHandler(Handler):
             PlotlyHandlerFactory(),
             BokehHandlerFactory(),
             PandasHandlerFactory(),
-            SklearnModelHandlerFactory()]
+            SklearnModelHandlerFactory(),
+            TorchModelHandlerFactory()]
 
     def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Create frame data from any known object.
@@ -37,49 +38,47 @@ class AutoHandler(Handler):
         Raises:
             UnsupportedObjectTypeException: In the case of unknown object type.
         """
-        tpe = str(type(obj))
-        handler = None
-
-        for factory in self.chain:
-            if re.match(factory.class_pattern(), tpe):
-                handler = factory.create_handler()
-
-        if handler is None:
-            raise UnsupportedObjectTypeException(obj)
-
-        return handler.encode(obj, description, params)
+        return self.find_handler(obj).encode(obj, description, params)
 
     def decode(self, data: FrameData) -> Any:
-        handler = None
+        return self.find_handler(data.type).decode(data)
 
+    def find_handler(self, obj):
         for factory in self.chain:
-            media_type_pattern = factory.media_pattern()
-            if media_type_pattern and re.match(media_type_pattern, data.type):
-                handler = factory.create_handler()
+            if factory.accept(obj):
+                return factory.create_handler()
 
-        if handler is None:
-            raise UnsupportedObjectTypeException(data.type)
+        raise UnsupportedObjectTypeException(obj)
 
-        return handler.decode(data)
+
 
 
 class HandlerFactory(ABC):
     @abstractmethod
-    def class_pattern(self) -> str:
+    def accept(self, obj: Any) -> bool:
         pass
-
-    def media_pattern(self) -> Optional[str]:
-        return None
 
     @abstractmethod
     def create_handler(self) -> Handler:
         pass
 
+    @staticmethod
+    def has_type(obj: Any, tpe: str) -> bool:
+        return f"<class '{tpe}'>" in map(lambda x: str(x), inspect.getmro(obj.__class__))
+
+    @staticmethod
+    def is_type(obj: Any, tpe: str) -> bool:
+        return str(type(obj)) == f"<class '{tpe}'>"
+
+    @staticmethod
+    def is_media(obj: Any, media: List[str]):
+        return isinstance(obj, str) and str(obj) in media
+
 
 class MatplotlibHandlerFactory(HandlerFactory):
 
-    def class_pattern(self) -> str:
-        return "<class 'matplotlib.figure.Figure'>"
+    def accept(self, obj: Any) -> bool:
+        return self.is_type(obj, "matplotlib.figure.Figure")
 
     def create_handler(self) -> Handler:
         from dstack.matplotlib import MatplotlibHandler
@@ -88,8 +87,8 @@ class MatplotlibHandlerFactory(HandlerFactory):
 
 class PlotlyHandlerFactory(HandlerFactory):
 
-    def class_pattern(self) -> str:
-        return "<class 'plotly.graph_objs._figure.Figure'>"
+    def accept(self, obj: Any) -> bool:
+        return self.is_type(obj, "plotly.graph_objs._figure.Figure")
 
     def create_handler(self) -> Handler:
         from dstack.plotly import PlotlyHandler
@@ -98,8 +97,8 @@ class PlotlyHandlerFactory(HandlerFactory):
 
 class BokehHandlerFactory(HandlerFactory):
 
-    def class_pattern(self) -> str:
-        return "<class 'bokeh.plotting.figure.Figure'>"
+    def accept(self, obj: Any) -> bool:
+        return self.is_type(obj, "bokeh.plotting.figure.Figure")
 
     def create_handler(self) -> Handler:
         from dstack.bokeh import BokehHandler
@@ -108,11 +107,9 @@ class BokehHandlerFactory(HandlerFactory):
 
 class PandasHandlerFactory(HandlerFactory):
 
-    def class_pattern(self) -> str:
-        return "<class 'pandas.core.frame.DataFrame'>"
-
-    def media_pattern(self) -> Optional[str]:
-        return "text/csv"
+    def accept(self, obj: Any) -> bool:
+        return self.is_media(obj, ["text/csv"]) or \
+               self.is_type(obj, "pandas.core.frame.DataFrame")
 
     def create_handler(self) -> Handler:
         from dstack.pandas import DataFrameHandler
@@ -121,12 +118,21 @@ class PandasHandlerFactory(HandlerFactory):
 
 class SklearnModelHandlerFactory(HandlerFactory):
 
-    def class_pattern(self) -> str:
-        return r"<class 'sklearn\..*'>"
-
-    def media_pattern(self) -> Optional[str]:
-        return r"sklearn/.*"
+    def accept(self, obj: Any) -> bool:
+        return self.is_media(obj, ["sklearn/pickle", "sklearn/joblib"]) or \
+               self.has_type(obj, "sklearn.base.BaseEstimator")
 
     def create_handler(self) -> Handler:
         from dstack.sklearn import SklearnModelHandler
         return SklearnModelHandler()
+
+
+class TorchModelHandlerFactory(HandlerFactory):
+
+    def accept(self, obj: Any) -> bool:
+        return self.is_media(obj, ["torch/state", "torch/model"]) or \
+               self.has_type(obj, "torch.nn.modules.module.Module")
+
+    def create_handler(self) -> Handler:
+        from dstack.torch import TorchModelHandler
+        return TorchModelHandler()
