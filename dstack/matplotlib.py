@@ -2,6 +2,7 @@ import io
 from typing import Dict, Optional
 
 from dstack import BytesContent
+from dstack.content import MediaType
 from dstack.stack import Handler, FrameData
 
 
@@ -24,4 +25,4 @@ class MatplotlibHandler(Handler):
         """
         buf = io.BytesIO()
         obj.savefig(buf, format="svg")
-        return FrameData(BytesContent(buf), "image/svg", description, params)
+        return FrameData(BytesContent(buf), MediaType("image/svg+xml", "matplotlib"), description, params)

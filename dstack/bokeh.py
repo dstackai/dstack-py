@@ -5,6 +5,7 @@ from bokeh import __version__ as bokeh_version
 from bokeh.embed import json_item
 
 from dstack import BytesContent
+from dstack.content import MediaType
 from dstack.stack import Handler, FrameData
 
 
@@ -26,4 +27,6 @@ class BokehHandler(Handler):
             Frame data.
         """
         text = dumps(json_item(obj))
-        return FrameData(BytesContent(text.encode("utf-8")), "bokeh", description, params, {"bokeh_version": bokeh_version})
+        return FrameData(BytesContent(text.encode("utf-8")),
+                         MediaType("application/json", "bokeh"),
+                         description, params, {"bokeh_version": bokeh_version})

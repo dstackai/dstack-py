@@ -1,7 +1,8 @@
 import base64
 import io
 from abc import ABC, abstractmethod
-from typing import IO, Union
+from pathlib import Path
+from typing import IO, Union, Optional
 
 
 class Content(ABC):
@@ -38,12 +39,23 @@ class BytesContent(Content):
         return self.buf.getvalue()
 
 
-class StreamContent(Content):
+class AbstractStreamContent(Content, ABC):
+    def __init__(self):
+        self.cache = None
 
+    def value(self) -> bytes:
+        if self.cache:
+            return self.cache
+        else:
+            self.cache = self.stream().read()
+            return self.cache
+
+
+class StreamContent(AbstractStreamContent):
     def __init__(self, input_stream: IO, content_length: int):
+        super().__init__()
         self.input_stream = input_stream
         self.content_length = content_length
-        self.cache = None
 
     def length(self) -> int:
         return self.content_length
@@ -51,9 +63,28 @@ class StreamContent(Content):
     def stream(self) -> IO:
         return self.input_stream
 
-    def value(self) -> bytes:
-        if self.cache:
-            return self.cache
-        else:
-            self.cache = self.input_stream.read()
-            return self.cache
+
+class FileContent(AbstractStreamContent):
+    def __init__(self, filename: str):
+        super().__init__()
+        self.filename = filename
+
+    def length(self) -> int:
+        return Path(self.filename).stat().st_size
+
+    def stream(self) -> IO:
+        return open(self.filename, "r")
+
+
+class MediaType(object):
+    content_type_map = {
+        "application/json": "json",
+        "image/png": "png",
+        "image/svg+xml": "svg",
+        "text/csv": "csv"
+    }
+
+    def __init__(self, content_type: str, application_type: str, storage_format: Optional[str] = None):
+        self.content_type = content_type
+        self.application_type = application_type
+        self.storage_format = storage_format if storage_format else self.content_type_map.get(content_type, None)

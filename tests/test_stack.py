@@ -92,7 +92,8 @@ class StackFrameTest(TestBase):
         self.assertIsNotNone(self.data["id"])
         self.assertEqual("my_token", self.token)
         self.assertEqual(1, len(attachments))
-        self.assertEqual("image/svg", attachments[0]["type"])
+        self.assertEqual("image/svg+xml", attachments[0]["content_type"])
+        self.assertEqual("matplotlib", attachments[0]["application_type"])
         self.assertNotIn("params", attachments[0].keys())
         self.assertEqual(my_desc, attachments[0]["description"])
 

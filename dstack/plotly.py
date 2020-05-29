@@ -3,6 +3,7 @@ from typing import Dict, Optional
 from plotly import __version__ as plotly_version
 
 from dstack import BytesContent
+from dstack.content import MediaType
 from dstack.stack import Handler, FrameData
 
 
@@ -34,5 +35,7 @@ class PlotlyHandler(Handler):
             Frame data.
         """
         json = obj.to_json()
-        return FrameData(BytesContent(json.encode("utf-8")), "plotly", description, params,
+        return FrameData(BytesContent(json.encode("utf-8")),
+                         MediaType("application/json", "plotly"),
+                         description, params,
                          {"plotly_version": plotly_version, "plotly_js_version": self.plotly_js_version})

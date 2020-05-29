@@ -51,8 +51,6 @@ class AutoHandler(Handler):
         raise UnsupportedObjectTypeException(obj)
 
 
-
-
 class HandlerFactory(ABC):
     @abstractmethod
     def accept(self, obj: Any) -> bool:

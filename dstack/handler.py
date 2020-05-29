@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 
-from dstack.content import Content
+from dstack.content import Content, MediaType
 
 
 class FrameData:
@@ -13,7 +13,7 @@ class FrameData:
     """
 
     def __init__(self, data: Content,
-                 media_type: str,
+                 media_type: MediaType,
                  description: Optional[str],
                  params: Optional[Dict],
                  settings: Optional[Dict] = None):
@@ -26,8 +26,10 @@ class FrameData:
             settings: Optional settings are usually used to store libraries versions or extra information
                 required to display data correctly.
         """
-        self.data = data  # base64.b64encode(data.getvalue()).decode()
-        self.type = media_type
+        self.data = data
+        self.content_type = media_type.content_type
+        self.application_type = media_type.application_type
+        self.storage_format = media_type.storage_format
         self.description = description
         self.params = params
         self.settings = settings

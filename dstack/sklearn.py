@@ -11,6 +11,7 @@ import sklearn
 from sklearn.linear_model import LinearRegression
 
 from dstack import Handler, BytesContent
+from dstack.content import MediaType
 from dstack.stack import FrameData
 
 
@@ -24,7 +25,7 @@ class Persistence(ABC):
         pass
 
     @abstractmethod
-    def type(self) -> str:
+    def type(self) -> MediaType:
         pass
 
 
@@ -37,8 +38,8 @@ class JoblibPersistence(Persistence):
     def decode(self, stream):
         return joblib.load(stream)
 
-    def type(self) -> str:
-        return "sklearn/joblib"
+    def type(self) -> MediaType:
+        return MediaType("application/binary", "sklearn", "joblib")
 
 
 class PicklePersistence(Persistence):
@@ -48,28 +49,22 @@ class PicklePersistence(Persistence):
     def decode(self, data):
         return pickle.loads(data)
 
-    def type(self) -> str:
-        return "sklearn/pickle"
-
-
-__persistence: Persistence = JoblibPersistence()
-
-
-def get_persistence():
-    global __persistence
-    return __persistence
+    def type(self) -> MediaType:
+        return MediaType("application/binary", "sklearn", "pickle")
 
 
 class SklearnModelHandler(Handler):
-    def __init__(self):
+    PERSISTENCE = JoblibPersistence()
+
+    def __init__(self, persistence: Optional[Persistence] = None):
         self.map = {
             LinearRegression: LinearRegressionModelInfo
         }
+        self.persistence = persistence if persistence else self.PERSISTENCE
         pass
 
     def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        persist = get_persistence()
-        buf = persist.encode(obj)
+        buf = self.persistence.encode(obj)
 
         settings = {"class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
                     "python": sys.version,
@@ -82,10 +77,10 @@ class SklearnModelHandler(Handler):
             model_info = self.map[obj.__class__](obj)
             settings["info"] = model_info.settings()
 
-        return FrameData(BytesContent(buf), persist.type(), description, params, settings)
+        return FrameData(BytesContent(buf), self.persistence.type(), description, params, settings)
 
     def decode(self, data: FrameData) -> Any:
-        persist = JoblibPersistence() if data.type == "sklearn/joblib" else PicklePersistence()
+        persist = JoblibPersistence() if data.storage_format == "joblib" else PicklePersistence()
         return persist.decode(data.data.stream())
 
 

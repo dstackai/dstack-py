@@ -6,6 +6,7 @@ import torch
 import torch.version
 
 from dstack import Handler, FrameData, BytesContent
+from dstack.content import MediaType
 
 
 class TorchModelHandler(Handler):
@@ -26,12 +27,14 @@ class TorchModelHandler(Handler):
 
         if self.store_state_dict:
             torch.save(obj.state_dict(), buf)
-            media_type = "torch/state"
+            application_type = "torch/state"
         else:
             torch.save(obj, buf)
-            media_type = "torch/model"
+            application_type = "torch/model"
 
-        return FrameData(BytesContent(buf), media_type, description, params, settings)
+        return FrameData(BytesContent(buf),
+                         MediaType("application/binary", application_type, "pickle"),
+                         description, params, settings)
 
     def decode(self, data: FrameData) -> Any:
         return torch.load(data.data.stream(), self.map_location)
