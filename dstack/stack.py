@@ -2,11 +2,11 @@ import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
 from dstack import AutoHandler
-from dstack.handler import FrameData, Handler
+from dstack.handler import FrameData, Encoder
 from dstack.protocol import Protocol
 from dstack.version import __version__
 
@@ -48,10 +48,12 @@ class StackFrame(object):
         self.timestamp = int(round(time.time() * 1000))  # milliseconds
         self.data: List[FrameData] = []
 
-    def commit(self, obj,
+    def commit(self,
+               obj: Any,
                description: Optional[str] = None,
                params: Optional[Dict] = None,
-               handler: Handler = AutoHandler(), **kwargs):
+               encoder: Optional[Encoder[Any]] = None,
+               **kwargs):
         """Add data to the stack frame.
 
         Args:
@@ -61,12 +63,13 @@ class StackFrame(object):
                 case of multiple data objects in the stack frame, e.g. set of plots with settings.
             description: Description of the data.
             params: Parameters associated with this data, e.g. plot settings.
-            handler: Handler to use, by default it is AutoHandler.
+            encoder: Handler to use, by default it is AutoHandler.
             **kwargs: Optional parameters is an alternative to params. If both are present this one will
                 be merged into params.
         """
+        encoder = encoder if encoder else AutoHandler()
         params = merge_or_none(params, kwargs)
-        data = handler.encode(obj, description, params)
+        data = encoder.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
         if self.auto_push:

@@ -22,7 +22,7 @@ class Content(ABC):
         pass
 
     def base64value(self) -> str:
-        return base64.b64encode(self.value()).decode("utf-8")
+        return base64.b64encode(self.value()).decode()
 
 
 class BytesContent(Content):
@@ -47,7 +47,8 @@ class AbstractStreamContent(Content, ABC):
         if self.cache:
             return self.cache
         else:
-            self.cache = self.stream().read()
+            with self.stream() as f:
+                self.cache = f.read()
             return self.cache
 
 
@@ -73,7 +74,7 @@ class FileContent(AbstractStreamContent):
         return Path(self.filename).stat().st_size
 
     def stream(self) -> IO:
-        return open(self.filename, "r")
+        return open(self.filename, "rb")
 
 
 class MediaType(object):
@@ -84,7 +85,7 @@ class MediaType(object):
         "text/csv": "csv"
     }
 
-    def __init__(self, content_type: str, application_type: str, storage_format: Optional[str] = None):
+    def __init__(self, content_type: str, application: str, storage_format: Optional[str] = None):
         self.content_type = content_type
-        self.application_type = application_type
+        self.application = application
         self.storage_format = storage_format if storage_format else self.content_type_map.get(content_type, None)

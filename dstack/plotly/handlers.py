@@ -1,13 +1,15 @@
 from typing import Dict, Optional
 
 from plotly import __version__ as plotly_version
+from plotly.graph_objs._figure import Figure
 
 from dstack import BytesContent
 from dstack.content import MediaType
-from dstack.stack import Handler, FrameData
+from dstack.handler import Encoder
+from dstack.stack import FrameData
 
 
-class PlotlyHandler(Handler):
+class PlotlyEncoder(Encoder[Figure]):
     """A class to handle Plotly charts.
 
     Notes:
@@ -18,12 +20,12 @@ class PlotlyHandler(Handler):
         """Create an instance with specified Plotly.js version if needed.
 
         Args:
-            plotly_js_version: Plotly.js version to use. It will stored in the settings
+            plotly_js_version: Plotly.js version to use. It will be stored in the settings
             part of frame data.
         """
         self.plotly_js_version = plotly_js_version
 
-    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj: Figure, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Build frame data object from Plotly figure.
 
         Args:

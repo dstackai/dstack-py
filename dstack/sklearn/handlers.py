@@ -1,59 +1,20 @@
-import io
-import pickle
 import sys
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 import joblib
 import numpy
 import scipy
 import sklearn
+from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 
-from dstack import Handler, BytesContent
-from dstack.content import MediaType
+from dstack import BytesContent, Encoder, Decoder
+from dstack.sklearn.persistence import JoblibPersistence, Persistence, PicklePersistence
 from dstack.stack import FrameData
 
 
-class Persistence(ABC):
-    @abstractmethod
-    def encode(self, model):
-        pass
-
-    @abstractmethod
-    def decode(self, data):
-        pass
-
-    @abstractmethod
-    def type(self) -> MediaType:
-        pass
-
-
-class JoblibPersistence(Persistence):
-    def encode(self, model):
-        stream = io.BytesIO()
-        joblib.dump(model, stream)
-        return stream
-
-    def decode(self, stream):
-        return joblib.load(stream)
-
-    def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn", "joblib")
-
-
-class PicklePersistence(Persistence):
-    def encode(self, model):
-        return pickle.dumps(model)
-
-    def decode(self, data):
-        return pickle.loads(data)
-
-    def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn", "pickle")
-
-
-class SklearnModelHandler(Handler):
+class SklearnModelEncoder(Encoder[BaseEstimator]):
     PERSISTENCE = JoblibPersistence()
 
     def __init__(self, persistence: Optional[Persistence] = None):
@@ -63,7 +24,7 @@ class SklearnModelHandler(Handler):
         self.persistence = persistence if persistence else self.PERSISTENCE
         pass
 
-    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj: BaseEstimator, description: Optional[str], params: Optional[Dict]) -> FrameData:
         buf = self.persistence.encode(obj)
 
         settings = {"class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
@@ -79,7 +40,10 @@ class SklearnModelHandler(Handler):
 
         return FrameData(BytesContent(buf), self.persistence.type(), description, params, settings)
 
-    def decode(self, data: FrameData) -> Any:
+
+class SklearnModelDecoder(Decoder[BaseEstimator]):
+
+    def decode(self, data: FrameData) -> BaseEstimator:
         persist = JoblibPersistence() if data.storage_format == "joblib" else PicklePersistence()
         return persist.decode(data.data.stream())
 

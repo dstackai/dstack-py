@@ -5,15 +5,16 @@ from typing import Optional, Dict, Union, Any
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
     from_yaml_file, ConfigurationException, get_config, Profile
-from dstack.content import StreamContent, BytesContent
+from dstack.content import StreamContent, BytesContent, MediaType
+from dstack.handler import Encoder, Decoder, T
 from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
-from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
+from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
                message: Optional[str] = None,
                params: Optional[Dict] = None,
-               handler: Handler = AutoHandler(),
+               encoder: Optional[Encoder[Any]] = None,
                profile: str = "default",
                **kwargs) -> str:
     """Create frame in the stack, commits and pushes data in a single operation.
@@ -24,7 +25,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         description: Optional description of the object.
         message: Push message to describe what's new in this revision.
         params: Optional parameters.
-        handler: Specify a handler to handle the object, by default `AutoHandler` will be used.
+        encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
         **kwargs: Optional parameters is an alternative to params. If both are present this one
             will be merged into params.
@@ -35,7 +36,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
     frame = create_frame(stack=stack,
                          profile=profile,
                          check_access=False)
-    frame.commit(obj, description, params, handler, **kwargs)
+    frame.commit(obj, description, params, encoder, **kwargs)
     return frame.push(message)
 
 
@@ -136,12 +137,16 @@ def pull_raw(stack: str,
 
     data = \
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
-            StreamContent(*protocol.download(attach["download_url"]))
+        StreamContent(*protocol.download(attach["download_url"]))
 
-    return FrameData(data, attach["type"], attach["description"], params, attach.get("settings", None))
+    media_type = MediaType(attach["content_type"], attach["application"], attach.get("storage_format", None))
+    return FrameData(data, media_type, attach["description"], params, attach.get("settings", None))
 
 
 def pull(stack: str,
          profile: str = "default",
-         params: Optional[Dict] = None, **kwargs) -> Any:
-    return AutoHandler().decode(pull_raw(stack, profile, params, **kwargs))
+         params: Optional[Dict] = None,
+         decoder: Optional[Decoder[T]] = None,
+         **kwargs) -> T:
+    decoder = decoder if decoder else AutoHandler()
+    return decoder.decode(pull_raw(stack, profile, params, **kwargs))

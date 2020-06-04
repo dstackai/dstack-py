@@ -1,5 +1,6 @@
+import inspect
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TypeVar, Generic, List
 
 from dstack.content import Content, MediaType
 
@@ -28,17 +29,24 @@ class FrameData:
         """
         self.data = data
         self.content_type = media_type.content_type
-        self.application_type = media_type.application_type
+        self.application = media_type.application
         self.storage_format = media_type.storage_format
         self.description = description
         self.params = params
         self.settings = settings
 
+    def media_type(self) -> MediaType:
+        return MediaType(self.content_type, self.application, self.settings)
 
-class Handler(ABC):
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+
+class Encoder(ABC, Generic[T]):
 
     @abstractmethod
-    def encode(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+    def encode(self, obj: T, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Convert data object to appropriate format.
         Args:
             obj: A data which is needed to be converted, e.g. plot.
@@ -51,5 +59,35 @@ class Handler(ABC):
         """
         pass
 
-    def decode(self, data: FrameData) -> Any:
-        return None
+
+class Decoder(ABC, Generic[T]):
+
+    @abstractmethod
+    def decode(self, data: FrameData) -> T:
+        pass
+
+
+class AbstractFactory(Generic[T, S], ABC):
+    @abstractmethod
+    def accept(self, obj: T) -> bool:
+        pass
+
+    @abstractmethod
+    def create(self) -> S:
+        pass
+
+
+class EncoderFactory(AbstractFactory[Any, Encoder], ABC):
+    @staticmethod
+    def has_type(obj: Any, tpe: str) -> bool:
+        return f"<class '{tpe}'>" in map(lambda x: str(x), inspect.getmro(obj.__class__))
+
+    @staticmethod
+    def is_type(obj: Any, tpe: str) -> bool:
+        return str(type(obj)) == f"<class '{tpe}'>"
+
+
+class DecoderFactory(AbstractFactory[MediaType, Decoder], ABC):
+    @staticmethod
+    def is_media(obj: str, media: List[str]):
+        return isinstance(obj, str) and str(obj) in media
