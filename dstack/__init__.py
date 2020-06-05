@@ -140,7 +140,7 @@ def pull_raw(stack: str,
         StreamContent(*protocol.download(attach["download_url"]))
 
     media_type = MediaType(attach["content_type"], attach["application"], attach.get("storage_format", None))
-    return FrameData(data, media_type, attach["description"], params, attach.get("settings", None))
+    return FrameData(data, media_type, attach.get("description", None), params, attach.get("settings", None))
 
 
 def pull(stack: str,

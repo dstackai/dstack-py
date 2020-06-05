@@ -17,7 +17,8 @@ class DataFrameEncoderFactory(EncoderFactory):
 class DataFrameDecoderFactory(DecoderFactory):
 
     def accept(self, obj: MediaType) -> bool:
-        pass
+        return obj.application == "pandas/dataframe"
 
     def create(self) -> Decoder:
-        pass
+        from dstack.pandas.handlers import DataFrameDecoder
+        return DataFrameDecoder()
