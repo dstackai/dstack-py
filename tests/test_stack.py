@@ -1,69 +1,10 @@
 import unittest
-from typing import Dict, Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from dstack import create_frame, stack_path
-from dstack.config import Profile, InPlaceConfig, configure
-from dstack.protocol import Protocol, ProtocolFactory, setup_protocol
-
-
-class TestProtocol(Protocol):
-    def __init__(self, handler: Callable[[Dict, str], Dict]):
-        self.exception = None
-        self.handler = handler
-
-    def push(self, stack: str, token: str, data: Dict) -> Dict:
-        data["stack"] = stack
-        return self.handle(data, token)
-
-    def access(self, stack: str, token: str) -> Dict:
-        return self.handle({"stack": stack}, token)
-
-    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
-        pass
-
-    def download(self, url):
-        pass
-
-    def handle(self, data: Dict, token: str) -> Dict:
-        if self.exception is not None:
-            raise self.exception
-        else:
-            return self.handler(data, token)
-
-    def broke(self, exception: Exception = RuntimeError()):
-        self.exception = exception
-
-    def fix(self):
-        self.exception = None
-
-
-class TestBase(unittest.TestCase):
-    def __init__(self, method: str = "runTest"):
-        super().__init__(method)
-        self.protocol = TestProtocol(self.handler)
-
-    def handler(self, data: Dict, token: str) -> Dict:
-        self.data = data
-        self.token = token
-        return {"status": 0, "url": "https://api.dstack.ai/stacks/test/test"}
-
-    def setUp(self):
-        config = InPlaceConfig()
-        config.add_or_replace_profile(Profile("default", "user", "my_token", "https://api.dstack.ai", verify=True))
-        configure(config)
-        setup_protocol(TestProtocolFactory(self.protocol, handler=self.handler))
-
-
-class TestProtocolFactory(ProtocolFactory):
-    def __init__(self, protocol, handler: Callable[[Dict, str], Dict]):
-        self.handler = handler
-        self.protocol = protocol
-
-    def create_protocol(self, profile: Profile) -> Protocol:
-        return self.protocol
+from tests import TestBase
 
 
 class StackFrameTest(TestBase):
@@ -87,10 +28,10 @@ class StackFrameTest(TestBase):
         frame.commit(fig, my_desc)
         frame.push()
 
-        attachments = self.data["attachments"]
-        self.assertEqual("user/plots/my_plot", self.data["stack"])
-        self.assertIsNotNone(self.data["id"])
-        self.assertEqual("my_token", self.token)
+        attachments = self.protocol.data["attachments"]
+        self.assertEqual("user/plots/my_plot", self.protocol.data["stack"])
+        self.assertIsNotNone(self.protocol.data["id"])
+        self.assertEqual("my_token", self.protocol.token)
         self.assertEqual(1, len(attachments))
         self.assertEqual("image/svg+xml", attachments[0]["content_type"])
         self.assertEqual("matplotlib", attachments[0]["application"])
@@ -111,7 +52,7 @@ class StackFrameTest(TestBase):
             frame.commit(fig, params={"phase": phase, "index": idx})
 
         frame.push()
-        attachments = self.data["attachments"]
+        attachments = self.protocol.data["attachments"]
         self.assertEqual(len(p), len(attachments))
         for idx, phase in enumerate(p):
             att = attachments[idx]
@@ -124,13 +65,13 @@ class StackFrameTest(TestBase):
         frame = create_frame(stack="plots/my_plot")
         frame.commit(self.get_figure())
         frame.push()
-        self.assertEqual(f"user/plots/my_plot", self.data["stack"])
+        self.assertEqual(f"user/plots/my_plot", self.protocol.data["stack"])
 
     def test_stack_absolute_path(self):
         frame = create_frame(stack="/other/my_plot")
         frame.commit(self.get_figure())
         frame.push()
-        self.assertEqual(f"other/my_plot", self.data["stack"])
+        self.assertEqual(f"other/my_plot", self.protocol.data["stack"])
 
     def test_stack_path(self):
         self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))

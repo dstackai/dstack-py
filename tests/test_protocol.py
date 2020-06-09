@@ -3,15 +3,14 @@ import copy
 import json
 from unittest import TestCase
 
-from dstack import JsonProtocol
-from dstack.stack import BytesData
+from dstack import JsonProtocol, BytesContent
 
 
 class TestJsonProtocol(TestCase):
     def test_data_base64_length(self):
         def test_b64(s: str):
             buf = s.encode("UTF-8")
-            data = BytesData(buf)
+            data = BytesContent(buf)
             self.assertEqual(len(base64.b64encode(buf)), data.base64length())
 
         tests = ["hello world", "привет мир!"]
@@ -33,11 +32,11 @@ class TestJsonProtocol(TestCase):
             "x": 10,
             "attachments": [
                 {
-                    "data": BytesData(b"test test"),
+                    "data": BytesContent(b"test test"),
                     "hello": "world"
                 },
                 {
-                    "data": BytesData(b"hello world"),
+                    "data": BytesContent(b"hello world"),
                     "hello": "world"
                 }
             ]

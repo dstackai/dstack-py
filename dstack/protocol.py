@@ -140,12 +140,12 @@ class JsonProtocol(Protocol):
 
 class ProtocolFactory(ABC):
     @abstractmethod
-    def create_protocol(self, profile: Profile) -> Protocol:
+    def create(self, profile: Profile) -> Protocol:
         pass
 
 
 class JsonProtocolFactory(ProtocolFactory):
-    def create_protocol(self, profile: Profile) -> Protocol:
+    def create(self, profile: Profile) -> Protocol:
         return JsonProtocol(profile.server, profile.verify)
 
 
@@ -158,4 +158,4 @@ def setup_protocol(protocol_factory: ProtocolFactory):
 
 
 def create_protocol(profile: Profile) -> Protocol:
-    return __protocol_factory.create_protocol(profile)
+    return __protocol_factory.create(profile)
