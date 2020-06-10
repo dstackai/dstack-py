@@ -14,7 +14,7 @@ from dstack.stack import FrameData
 
 class AbstractDataFrameEncoder(Encoder[NDFrame], ABC):
     def __init__(self, encoding: str = "utf-8", header: bool = True,
-                 index: bool = False):
+                 index: bool = True):
         self.encoding = encoding
         self.header = header
         self.index = index
@@ -22,11 +22,13 @@ class AbstractDataFrameEncoder(Encoder[NDFrame], ABC):
     def encode(self, obj: NDFrame, description: Optional[str], params: Optional[Dict]) -> FrameData:
         buf = StringIO()
         obj.to_csv(buf, index=self.index, header=self.header, encoding=self.encoding, quoting=QUOTE_ALL)
+        index_type = [obj.index.dtype] if self.index else []
+
         return FrameData(BytesContent(buf.getvalue().encode(self.encoding)), MediaType("text/csv", self.application()),
                          description, params,
                          {"header": self.header,
-                          "index": obj.index.dtype if self.index else None,
-                          "schema": self.schema(obj),
+                          "index": self.index,
+                          "schema": index_type + self.schema(obj),
                           "encoding": self.encoding,
                           "version": pandas_version})
 
@@ -83,12 +85,13 @@ class DataFrameDecoder(AbstractDataFrameDecoder[DataFrame]):
         return False
 
     def post_process(self, df: DataFrame, settings: Dict) -> DataFrame:
-        index_type = settings.get("index", None)
-
-        if index_type:
-            df.index = df.index.astype(index_type)
-
+        has_index = settings["index"]
         schema = settings["schema"]
+
+        if has_index:
+            df.index = df.index.astype(schema[0])
+            schema = schema[1:]
+
         cols = [str(col) for col in df.columns]
 
         return df.astype(dict(zip(cols, schema)))
@@ -98,8 +101,15 @@ class SeriesDecoder(AbstractDataFrameDecoder[Series]):
     def is_series(self) -> bool:
         return True
 
-    def post_process(self, df: Series, settings: Dict) -> Series:
-        return df.astype(settings["schema"][0])
+    def post_process(self, s: Series, settings: Dict) -> Series:
+        has_index = settings["index"]
+        schema = settings["schema"]
+
+        if has_index:
+            s.index = s.index.astype(schema[0])
+            schema = schema[1:]
+
+        return s.astype(schema[0])
 
 
 class GeneralCsvDecoder(AbstractDataFrameDecoder[DataFrame]):
