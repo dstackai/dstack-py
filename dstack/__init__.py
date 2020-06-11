@@ -12,6 +12,7 @@ from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path,
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
+               access: Optional[str] = None,
                message: Optional[str] = None,
                params: Optional[Dict] = None,
                encoder: Optional[Encoder[Any]] = None,
@@ -23,6 +24,8 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         stack: A stack you want to commit and push to.
         obj: Object to commit and push, e.g. plot.
         description: Optional description of the object.
+        access: Access level for the stack. It may be public, private or None. It is None by default, so it will be
+                default access level in user's settings.
         message: Push message to describe what's new in this revision.
         params: Optional parameters.
         encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
@@ -35,6 +38,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
     """
     frame = create_frame(stack=stack,
                          profile=profile,
+                         access=access,
                          check_access=False)
     frame.commit(obj, description, params, encoder, **kwargs)
     return frame.push(message)
@@ -42,6 +46,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
 
 def create_frame(stack: str,
                  profile: str = "default",
+                 access: Optional[str] = None,
                  auto_push: bool = False,
                  check_access: bool = True) -> StackFrame:
     """Create a new stack frame. The method also checks access to specified stack.
@@ -66,7 +71,12 @@ def create_frame(stack: str,
 
             if <PROFILE> is not specified 'default' profile will be created. The system asks you about token
             from command line, make sure that you have already obtained token from the site.
-        auto_push:  Tells the system to push frame just after commit. It may be useful if you
+        access: Specify access level for this stack. It may be one of the following:
+            private - This means the stack will be visible only for the author.
+            public  - The stack will be accessible for everyone.
+            None    - Default access level will be used, one can find it in own settings on dstack server.
+            If it is not specified default access level will be used.
+        auto_push:  Tells the system to push frame just after the commit. It may be useful if you
             want to see result immediately. Default is False.
         check_access: Check access to be sure about credentials before trying to actually push something.
             Default is `True`.
@@ -78,11 +88,15 @@ def create_frame(stack: str,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
+    if access and access not in ["private", "public"]:
+        raise ValueError(f"access can be only private, public or None but found {access}")
+
     profile = get_config().get_profile(profile)
 
     frame = StackFrame(stack=stack,
                        user=profile.user,
                        token=profile.token,
+                       access=access,
                        auto_push=auto_push,
                        protocol=create_protocol(profile),
                        encryption=get_encryption(profile))

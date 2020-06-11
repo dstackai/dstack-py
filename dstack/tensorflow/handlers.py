@@ -1,5 +1,4 @@
 import shutil
-import sys
 from abc import ABC
 from pathlib import Path
 from tempfile import gettempdir
@@ -37,7 +36,6 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
 
         settings = {
             "class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-            "python": sys.version,
             "tensorflow": tf.__version__
         }
 

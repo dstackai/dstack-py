@@ -2,13 +2,14 @@ import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
+from sys import version as python_version
 from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
 from dstack import AutoHandler
 from dstack.handler import FrameData, Encoder
 from dstack.protocol import Protocol
-from dstack.version import __version__
+from dstack.version import __version__ as dstack_version
 
 
 class EncryptionMethod(ABC):
@@ -34,12 +35,14 @@ class StackFrame(object):
                  stack: str,
                  user: str,
                  token: str,
+                 access: Optional[str],
                  auto_push: bool,
                  protocol: Protocol,
                  encryption: EncryptionMethod):
         self.stack = stack
         self.user = user
         self.token = token
+        self.access = access
         self.auto_push = auto_push
         self.protocol = protocol
         self.encryption_method = encryption
@@ -106,11 +109,14 @@ class StackFrame(object):
         data = {"id": self.id,
                 "timestamp": self.timestamp,
                 "client": "dstack-py",
-                "version": __version__,
-                "os": get_os_info()}
+                "version": dstack_version,
+                "settings": self.settings()}
 
         if not isinstance(self.encryption_method, NoEncryption):
             data["encryption"] = self.encryption_method.info()
+
+        if self.access:
+            data["access"] = self.access
 
         return data
 
@@ -124,16 +130,22 @@ class StackFrame(object):
     def stack_path(self) -> str:
         return stack_path(self.user, self.stack)
 
+    @staticmethod
+    def settings():
+        info = uname()
+        return {"python": python_version,
+                "os": {
+                    "sysname": info[0],
+                    "release": info[2],
+                    "version": info[3],
+                    "machine": info[4]
+                }}
+
 
 def filter_none(d):
     if isinstance(d, Dict):
         return {k: filter_none(v) for k, v in d.items() if v is not None}
     return d
-
-
-def get_os_info() -> Dict:
-    info = uname()
-    return {"sysname": info[0], "release": info[2], "version": info[3], "machine": info[4]}
 
 
 def stack_path(user: str, stack: str) -> str:

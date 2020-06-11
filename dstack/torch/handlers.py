@@ -1,5 +1,4 @@
 import io
-import sys
 from typing import Optional, Dict
 
 import torch
@@ -22,7 +21,6 @@ class TorchModelEncoder(Encoder[Module]):
 
         # FIXME: add model summary here
         settings = {"class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-                    "python": sys.version,
                     "torch": torch.version.__version__}
 
         if self.store_whole_model:
