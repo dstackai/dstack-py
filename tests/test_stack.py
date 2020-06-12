@@ -1,9 +1,10 @@
 import unittest
+from sys import version as python_version
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame, stack_path
+from dstack import create_frame, stack_path, push_frame
 from tests import TestBase
 
 
@@ -77,6 +78,21 @@ class StackFrameTest(TestBase):
         self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))
         self.assertFailed(stack_path, "test", "плохой_стек")
         self.assertFailed(stack_path, "test", "bad stack")
+
+    def test_stack_access(self):
+        push_frame("test/my_plot", self.get_figure())
+        self.assertNotIn("access", self.protocol.data)
+
+        push_frame("test/my_plot_1", self.get_figure(), access="public")
+        self.assertEqual("public", self.protocol.data["access"])
+
+        push_frame("test/my_plot_2", self.get_figure(), access="private")
+        self.assertEqual("private", self.protocol.data["access"])
+
+    def test_per_frame_settings(self):
+        push_frame("test/my_plot", self.get_figure())
+        self.assertEqual(python_version, self.protocol.data["settings"]["python"])
+        self.assertIn("os", self.protocol.data["settings"])
 
     def assertFailed(self, func, *args):
         try:
