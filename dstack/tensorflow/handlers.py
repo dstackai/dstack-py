@@ -36,7 +36,8 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
 
         settings = {
             "class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-            "tensorflow": tf.__version__
+            "tensorflow": tf.__version__,
+            "storage_format": self.archive
         }
 
         if self.save_format == "tf":
@@ -44,7 +45,7 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
             filename = shutil.make_archive(archived, self.archive, filename)
 
         return FrameData(FileContent(filename),
-                         MediaType("application/binary", application_type, self.archive),
+                         MediaType("application/binary", application_type),
                          description, params, settings)
 
 
@@ -62,9 +63,11 @@ class TensorFlowKerasAbstractDecoder(Decoder[keras.Model], ABC):
         with open(filename, "wb") as f:
             f.write(data.data.stream().read())
 
-        if data.storage_format != "h5":
+        storage_format = data.settings["storage_format"]
+
+        if storage_format != "h5":
             unpacked = _create_filename(self.tmp_dir)
-            shutil.unpack_archive(filename, extract_dir=unpacked, format=data.storage_format)
+            shutil.unpack_archive(filename, extract_dir=unpacked, format=storage_format)
             filename = unpacked
 
         return filename

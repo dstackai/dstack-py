@@ -77,15 +77,19 @@ class FileContent(AbstractStreamContent):
         return open(self.filename, "rb")
 
 
-class MediaType(object):
-    content_type_map = {
-        "application/json": "json",
-        "image/png": "png",
-        "image/svg+xml": "svg",
-        "text/csv": "csv"
-    }
+CONTENT_TYPE_MAP = {
+    "application/json": "json",
+    "image/png": "png",
+    "image/svg+xml": "svg",
+    "text/csv": "csv",
+    "application/java-archive": "jar",
+    "application/zip": "zip"
+}
 
-    def __init__(self, content_type: str, application: str, storage_format: Optional[str] = None):
+CONTENT_TYPE_MAP_REVERSED = {y: x for x, y in CONTENT_TYPE_MAP.items()}
+
+
+class MediaType(object):
+    def __init__(self, content_type: str, application: Optional[str] = None):
         self.content_type = content_type
         self.application = application
-        self.storage_format = storage_format if storage_format else self.content_type_map.get(content_type, None)

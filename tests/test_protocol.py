@@ -19,7 +19,7 @@ class TestJsonProtocol(TestCase):
 
     def test_length(self):
         def b64(d):
-            d["data"] = base64.b64encode(d["data"].buf).decode()
+            d["data"] = base64.b64encode(d["data"].value()).decode()
 
         def length(d) -> int:
             x = copy.deepcopy(d)
@@ -42,5 +42,4 @@ class TestJsonProtocol(TestCase):
             ]
         }
         protocol = JsonProtocol("http://myhost", True)
-        print(protocol.length(data))
-        print(length(data))
+        self.assertEqual(protocol.length(data), length(data))

@@ -20,6 +20,10 @@ class Persistence(ABC):
     def type(self) -> MediaType:
         pass
 
+    @abstractmethod
+    def storage(self) -> str:
+        pass
+
 
 class JoblibPersistence(Persistence):
     def encode(self, model):
@@ -31,7 +35,10 @@ class JoblibPersistence(Persistence):
         return joblib.load(stream)
 
     def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn", "joblib")
+        return MediaType("application/binary", "sklearn")
+
+    def storage(self) -> str:
+        return "joblib"
 
 
 class PicklePersistence(Persistence):
@@ -42,4 +49,7 @@ class PicklePersistence(Persistence):
         return pickle.loads(data)
 
     def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn", "pickle")
+        return MediaType("application/binary", "sklearn")
+
+    def storage(self) -> str:
+        return "pickle"

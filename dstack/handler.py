@@ -30,13 +30,12 @@ class FrameData:
         self.data = data
         self.content_type = media_type.content_type
         self.application = media_type.application
-        self.storage_format = media_type.storage_format
         self.description = description
         self.params = params
         self.settings = settings
 
     def media_type(self) -> MediaType:
-        return MediaType(self.content_type, self.application, self.settings)
+        return MediaType(self.content_type, self.application)
 
 
 T = TypeVar("T")

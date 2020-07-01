@@ -1,4 +1,3 @@
-import sys
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
 
@@ -28,11 +27,11 @@ class SklearnModelEncoder(Encoder[BaseEstimator]):
         buf = self.persistence.encode(obj)
 
         settings = {"class": f"{obj.__class__.__module__}.{obj.__class__.__name__}",
-                    "python": sys.version,
                     "scikit-learn": sklearn.__version__,
                     "scipy": scipy.__version__,
                     "numpy": numpy.__version__,
-                    "joblib": joblib.__version__}
+                    "joblib": joblib.__version__,
+                    "storage_format": self.persistence.storage()}
 
         if obj.__class__ in self.map:
             model_info = self.map[obj.__class__](obj)
@@ -44,7 +43,8 @@ class SklearnModelEncoder(Encoder[BaseEstimator]):
 class SklearnModelDecoder(Decoder[BaseEstimator]):
 
     def decode(self, data: FrameData) -> BaseEstimator:
-        persist = JoblibPersistence() if data.storage_format == "joblib" else PicklePersistence()
+        storage_format = data.settings["storage_format"]
+        persist = JoblibPersistence() if storage_format == "joblib" else PicklePersistence()
         return persist.decode(data.data.stream())
 
 

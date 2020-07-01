@@ -69,12 +69,13 @@ class JsonProtocol(Protocol):
         return self.do_request("/stacks/access", {"stack": stack}, token)
 
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
-        params = {} if params is None else params
+        empty = params is None
+        params = {} if empty else params
         url = f"/stacks/{stack}"
         res = self.do_request(url, None, token=token, method="GET")
         attachments = res["stack"]["head"]["attachments"]
         for index, attach in enumerate(attachments):
-            if set(attach["params"].items()) == set(params.items()):
+            if (len(attachments) == 1 and empty) or set(attach["params"].items()) == set(params.items()):
                 frame = res["stack"]["head"]["id"]
                 attach_url = f"/attachs/{stack}/{frame}/{index}?download=true"
                 return self.do_request(attach_url, None, token=token, method="GET")
@@ -100,6 +101,10 @@ class JsonProtocol(Protocol):
 
         log.debug(event_id=event_id, func=log.erase_token, request_headers=response.request.headers)
         log.debug(event_id=event_id, func=log.ensure_json_serialization, response_headers=response.headers)
+
+        if response.status_code != 200:
+            # FIXME: parse content
+            log.debug(event_id=event_id, response_body=str(response.content))
 
         response.raise_for_status()
         return response.json(encoding=self.ENCODING)

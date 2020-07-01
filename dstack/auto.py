@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any, List, TypeVar
 
+from dstack.binary import FileEncoderFactory
 from dstack.bokeh import BokehEncoderFactory
 from dstack.handler import FrameData, Encoder, Decoder, AbstractFactory
 from dstack.matplotlib import MatplotlibEncoderFactory
@@ -34,7 +35,8 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
             SeriesEncoderFactory(),
             SklearnModelEncoderFactory(),
             TorchModelEncoderFactory(),
-            TensorFlowKerasModelEncoderFactory()]
+            TensorFlowKerasModelEncoderFactory(),
+            FileEncoderFactory()]
 
         self.decoders = [
             DataFrameDecoderFactory(),

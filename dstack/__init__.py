@@ -126,7 +126,7 @@ def pull1(stack: str,
     Raises:
         MatchException if there is no object that matches the parameters.
     """
-    d = pull_raw(stack, profile, params, **kwargs)
+    d = pull_data(stack, profile, params, **kwargs)
     if filename is not None:
         with open(filename, "wb") as f:
             f.write(d.data.value())
@@ -139,7 +139,7 @@ def get_encryption(profile: Profile) -> EncryptionMethod:
     return NoEncryption()
 
 
-def pull_raw(stack: str,
+def pull_data(stack: str,
              profile: str = "default",
              params: Optional[Dict] = None, **kwargs) -> FrameData:
     profile = get_config().get_profile(profile)
@@ -153,8 +153,9 @@ def pull_raw(stack: str,
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
         StreamContent(*protocol.download(attach["download_url"]))
 
-    media_type = MediaType(attach["content_type"], attach["application"], attach.get("storage_format", None))
-    return FrameData(data, media_type, attach.get("description", None), params, attach.get("settings", None))
+    media_type = MediaType(attach["content_type"], attach.get("application", None))
+    return FrameData(data, media_type, attach.get("description", None),
+                     attach.get("params", None), attach.get("settings", None))
 
 
 def pull(stack: str,
@@ -163,4 +164,4 @@ def pull(stack: str,
          decoder: Optional[Decoder[T]] = None,
          **kwargs) -> T:
     decoder = decoder if decoder else AutoHandler()
-    return decoder.decode(pull_raw(stack, profile, params, **kwargs))
+    return decoder.decode(pull_data(stack, profile, params, **kwargs))

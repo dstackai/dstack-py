@@ -1,3 +1,4 @@
+import copy
 import unittest
 from typing import Dict, Optional
 
@@ -21,9 +22,13 @@ class TestProtocol(Protocol):
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
         attachments = self.data["attachments"]
         for index, attach in enumerate(attachments):
-            if ("params" not in attach and params is None) or set(attach["params"].items()) == set(params.items()):
-                attach["data"] = attach["data"].base64value()
-                return {"attachment": attach}
+            if (params is None and (len(attachments) == 1 or "params" not in attach)) or \
+                    set(attach["params"].items()) == set(params.items()):
+                d = attach.pop("data")
+                attach1 = copy.deepcopy(attach)
+                attach1["data"] = d.base64value()
+                attach["data"] = d
+                return {"attachment": attach1}
 
     def download(self, url):
         raise NotImplementedError()
