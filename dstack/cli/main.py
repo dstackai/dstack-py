@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
 
@@ -55,7 +56,12 @@ def server(args: Namespace):
         print(srv.version())
 
     if args.start:
-        pass
+        java = srv.find_jdk()
+
+        if not java:
+            print("Can't find java")
+        else:
+            subprocess.run([java.path(), "-jar", srv.jar_path()])
 
 
 def main():
@@ -119,7 +125,7 @@ def main():
                               help="print server version",
                               action="store_true")
 
-    config_parser.set_defaults(func=server)
+    server_parser.set_defaults(func=server)
 
     if len(sys.argv) < 2:
         parser.print_help()

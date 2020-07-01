@@ -62,7 +62,7 @@ class Installer(object):
         jdk_version = server_attachment.params["jdk_version"]
         jdk_compatible_versions = server_attachment.params["jdk_compatible_versions"].split(",")
 
-        jar_file = self._jar_path()
+        jar_file = self.jar_path()
         is_newer_version = self._is_newer_version(server_version) or not jar_file or not jar_file.exists()
 
         if is_newer_version and download:
@@ -123,11 +123,11 @@ class Installer(object):
 
         self._download_data(data, path)
 
-        self._conf.set_property("server.jar", str(path))
+        self._conf.set_property("server.jar", str(path.name))
         self._conf.set_property("server.version", data.params["version"])
         self._conf.save()
 
-    def _jar_path(self, new_path: Optional[str] = None) -> Optional[Path]:
+    def jar_path(self, new_path: Optional[str] = None) -> Optional[Path]:
         server_jar = new_path or self._conf.get_property("server.jar")
         return self.base_path / "lib" / server_jar if server_jar else None
 
@@ -187,7 +187,7 @@ class Installer(object):
     def _delete(path: Path):
         if path.is_dir():
             shutil.rmtree(str(path))
-        else:
+        elif path.exists():
             path.unlink()
 
     @staticmethod
