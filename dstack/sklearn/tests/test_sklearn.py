@@ -20,7 +20,7 @@ class TestSklearn(TestBase):
         std_reg.fit(x_train, y_train)
 
         push_frame("test/sklearn/my_linear_model", std_reg, "My first linear model")
-        my_model: LinearRegression = pull("my_linear_model")
+        my_model: LinearRegression = pull("test/sklearn/my_linear_model")
 
         self.assertEqual(std_reg.coef_, my_model.coef_)
         self.assertEqual(std_reg.intercept_, my_model.intercept_)
