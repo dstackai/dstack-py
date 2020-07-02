@@ -22,7 +22,7 @@ class AbstractDataFrameEncoder(Encoder[NDFrame], ABC):
     def encode(self, obj: NDFrame, description: Optional[str], params: Optional[Dict]) -> FrameData:
         buf = StringIO()
         obj.to_csv(buf, index=self.index, header=self.header, encoding=self.encoding, quoting=QUOTE_ALL)
-        index_type = [obj.index.dtype] if self.index else []
+        index_type = [str(obj.index.dtype)] if self.index else []
 
         return FrameData(BytesContent(buf.getvalue().encode(self.encoding)), MediaType("text/csv", self.application()),
                          description, params,

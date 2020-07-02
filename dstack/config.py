@@ -25,7 +25,7 @@ class Profile(object):
          verify: Enable SSL certificate verification.
     """
 
-    def __init__(self, name: str, user: str, token: str, server: str, verify: bool):
+    def __init__(self, name: str, user: str, token: Optional[str], server: str, verify: bool):
         """Create a profile object.
 
         Args:
@@ -176,7 +176,7 @@ class YamlConfig(DictionaryBasedConfig):
         if profile is None:
             return None
         else:
-            return Profile(name, profile["user"], profile["token"],
+            return Profile(name, profile["user"], profile.get("token", None),
                            profile.get("server", API_SERVER), profile.get("verify", True))
 
     def add_or_replace_profile(self, profile: Profile):
@@ -189,7 +189,9 @@ class YamlConfig(DictionaryBasedConfig):
             profile: Profile to add or replace.
         """
         profiles = self.yaml_data.get("profiles", {})
-        update = {"token": profile.token, "user": profile.user}
+        update = {"user": profile.user}
+        if profile.token:
+            update["token"] = profile.token
         if profile.server != API_SERVER:
             update["server"] = profile.server
         if not profile.verify:

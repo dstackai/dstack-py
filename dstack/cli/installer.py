@@ -9,7 +9,7 @@ from typing import Optional, List, Callable
 from uuid import uuid4
 
 from dstack import FrameData, pull_data
-from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path
+from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path, configure
 from dstack.version import version_to_int
 
 
@@ -53,8 +53,10 @@ class Installer(object):
         self._java_factory = java_factory if java_factory else my_java_factory
 
         if not self._conf.get_profile("dstack"):
-            profile = Profile(self._PROFILE, "dstack", "", API_SERVER, verify=True)
+            profile = Profile(self._PROFILE, "dstack", None, API_SERVER, verify=True)
             self._conf.add_or_replace_profile(profile)
+
+        configure(self._conf)
 
     def _update(self, download: bool) -> bool:
         server_attachment = pull_data(self._STACK, profile=self._PROFILE)

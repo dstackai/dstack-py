@@ -45,7 +45,7 @@ class TestInstaller(TestBase):
 
         self.assertTrue(self.server.install())
 
-        file_to_check = Path.home() / ".dstack" / "lib" / jar_name
+        file_to_check = self.base / "lib" / jar_name
         self.assertTrue(file_to_check.exists())
 
     def fake_java(self, version: Optional[str] = None):
