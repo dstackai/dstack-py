@@ -4,13 +4,13 @@ from argparse import ArgumentParser, Namespace
 
 from dstack.cli import confirm, get_or_ask
 from dstack.cli.installer import Installer
-from dstack.config import from_yaml_file, Profile, API_SERVER
+from dstack.config import from_yaml_file, Profile, API_SERVER, _get_config_path
 from dstack.logger import hide_token
 from dstack.version import __version__ as version
 
 
 def config(args: Namespace):
-    conf = from_yaml_file(args.use_global_settings)
+    conf = from_yaml_file(_get_config_path(args.use_global_settings))
     if args.list:
         print("list of available profiles:\n")
         profiles = conf.list_profiles()
@@ -53,7 +53,7 @@ def server(args: Namespace):
             print("Server is up to date")
 
     if args.version:
-        print(srv.version())
+        print(srv.version() or "Server is not installed")
 
     if args.start:
         java = srv.find_jdk()
@@ -61,7 +61,10 @@ def server(args: Namespace):
         if not java:
             print("Can't find java")
         else:
-            subprocess.run([java.path(), "-jar", srv.jar_path()])
+            try:
+                subprocess.run([java.path(), "-jar", srv.jar_path()])
+            except KeyboardInterrupt:
+                print("Server stopped")
 
 
 def main():
