@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List, TypeVar
 
-from dstack.binary import FileEncoderFactory
 from dstack.bokeh import BokehEncoderFactory
+from dstack.files import FileEncoderFactory
 from dstack.handler import FrameData, Encoder, Decoder, AbstractFactory
 from dstack.matplotlib import MatplotlibEncoderFactory
 from dstack.pandas import DataFrameEncoderFactory, DataFrameDecoderFactory, SeriesDecoderFactory, \

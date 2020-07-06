@@ -9,5 +9,5 @@ class FileEncoderFactory(EncoderFactory):
         return isinstance(obj, Path) and not obj.is_dir()
 
     def create(self) -> Encoder:
-        from dstack.binary.handlers import FileEncoder
+        from dstack.files.handlers import FileEncoder
         return FileEncoder()
