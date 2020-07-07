@@ -1,4 +1,3 @@
-import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
@@ -6,9 +5,8 @@ from sys import version as python_version
 from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
-from dstack import AutoHandler
+from dstack import AutoHandler, Context
 from dstack.handler import FrameData, Encoder
-from dstack.protocol import Protocol
 from dstack.version import __version__ as dstack_version
 
 
@@ -32,19 +30,13 @@ class NoEncryption(EncryptionMethod):
 
 class StackFrame(object):
     def __init__(self,
-                 stack: str,
-                 user: str,
-                 token: str,
+                 context: Context,
                  access: Optional[str],
                  auto_push: bool,
-                 protocol: Protocol,
                  encryption: EncryptionMethod):
-        self.stack = stack
-        self.user = user
-        self.token = token
         self.access = access
         self.auto_push = auto_push
-        self.protocol = protocol
+        self.context = context
         self.encryption_method = encryption
         self.id = uuid4().__str__()
         self.index = 0
@@ -70,7 +62,7 @@ class StackFrame(object):
             **kwargs: Optional parameters is an alternative to params. If both are present this one will
                 be merged into params.
         """
-        encoder = encoder if encoder else AutoHandler()
+        encoder = encoder if encoder else AutoHandler(self.context)
         params = merge_or_none(params, kwargs)
         data = encoder.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
@@ -121,14 +113,11 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        self.protocol.access(self.stack_path(), self.token)
+        self.context.protocol.access(self.context.stack_path(), self.context.profile.token)
 
     def send_push(self, frame: Dict) -> str:
-        res = self.protocol.push(self.stack_path(), self.token, frame)
+        res = self.context.protocol.push(self.context.stack_path(), self.context.profile.token, frame)
         return res["url"]
-
-    def stack_path(self) -> str:
-        return stack_path(self.user, self.stack)
 
     @staticmethod
     def settings():
@@ -146,13 +135,6 @@ def filter_none(d):
     if isinstance(d, Dict):
         return {k: filter_none(v) for k, v in d.items() if v is not None}
     return d
-
-
-def stack_path(user: str, stack: str) -> str:
-    if re.match("^[a-zA-Z0-9-_/]{3,255}$", stack):
-        return stack[1:] if stack[0] == "/" else f"{user}/{stack}"
-    else:
-        raise ValueError("Stack name can contain only latin letters, digits, slash and underscore")
 
 
 def merge_or_none(x: Optional[Dict], y: Optional[Dict]) -> Optional[Dict]:

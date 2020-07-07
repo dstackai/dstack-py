@@ -8,7 +8,7 @@ from tempfile import gettempdir
 from typing import Optional, List, Callable
 from uuid import uuid4
 
-from dstack import pull_data
+from dstack import pull_data, create_context
 from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path, configure
 from dstack.handler import FrameData
 from dstack.version import version_to_int
@@ -61,7 +61,8 @@ class Installer(object):
         configure(self._conf)
 
     def _update(self, download: bool) -> bool:
-        server_attachment = pull_data(self._STACK, profile=self._PROFILE)
+        context = create_context(self._STACK, self._PROFILE)
+        server_attachment = pull_data(context)
         server_version = server_attachment.params["version"]
         jdk_version = server_attachment.params["jdk_version"]
         jdk_compatible_versions = server_attachment.params["jdk_compatible_versions"].split(",")
@@ -136,8 +137,8 @@ class Installer(object):
         return self.base_path / "lib" / server_jar if server_jar else None
 
     def _download_jdk(self, version: str):
-        stack = f"{self._JDK_STACK_BASE}/{version}"
-        jdk_attachment = pull_data(stack, self._PROFILE, os=self.get_os())
+        context = create_context(f"{self._JDK_STACK_BASE}/{version}", self._PROFILE)
+        jdk_attachment = pull_data(context, os=self.get_os())
 
         jdk_path = self._jdk_path(check_path_exist=False)
 

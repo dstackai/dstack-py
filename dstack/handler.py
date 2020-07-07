@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, TypeVar, Generic, List
 
 from dstack.content import Content, MediaType
+from dstack.context import ContextAwareObject
 
 
 class FrameData:
@@ -42,7 +43,7 @@ T = TypeVar("T")
 S = TypeVar("S")
 
 
-class Encoder(ABC, Generic[T]):
+class Encoder(ContextAwareObject, Generic[T]):
 
     @abstractmethod
     def encode(self, obj: T, description: Optional[str], params: Optional[Dict]) -> FrameData:
@@ -59,7 +60,7 @@ class Encoder(ABC, Generic[T]):
         pass
 
 
-class Decoder(ABC, Generic[T]):
+class Decoder(ContextAwareObject, Generic[T]):
 
     @abstractmethod
     def decode(self, data: FrameData) -> T:
