@@ -4,7 +4,7 @@ from sys import version as python_version
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame, stack_path, push_frame
+from dstack import create_frame, push_frame, Context, Profile
 from tests import TestBase
 
 
@@ -75,6 +75,10 @@ class StackFrameTest(TestBase):
         self.assertEqual(f"other/my_plot", self.protocol.data["stack"])
 
     def test_stack_path(self):
+        def stack_path(user: str, stack: str) -> str:
+            context = Context(stack, Profile("", user, None, "", verify=True), self.protocol)
+            return context.stack_path()
+
         self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))
         self.assertFailed(stack_path, "test", "плохой_стек")
         self.assertFailed(stack_path, "test", "bad stack")

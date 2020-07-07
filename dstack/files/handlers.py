@@ -13,3 +13,7 @@ class FileEncoder(Encoder[Path]):
         buf = StreamContent(f, length)
         return FrameData(buf, media_type, description, params, {"filename": obj.name})
 
+
+class PathEncoder(Encoder[Path]):
+    def encode(self, obj: Path, description: Optional[str], params: Optional[Dict]) -> FrameData:
+        pass

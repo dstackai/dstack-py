@@ -8,7 +8,8 @@ import sklearn
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 
-from dstack import BytesContent, Encoder, Decoder
+from dstack.content import BytesContent
+from dstack.handler import Encoder, Decoder
 from dstack.sklearn.persistence import JoblibPersistence, Persistence, PicklePersistence
 from dstack.stack import FrameData
 
@@ -17,11 +18,11 @@ class SklearnModelEncoder(Encoder[BaseEstimator]):
     PERSISTENCE = JoblibPersistence()
 
     def __init__(self, persistence: Optional[Persistence] = None):
+        super().__init__()
         self.map = {
             LinearRegression: LinearRegressionModelInfo
         }
         self.persistence = persistence if persistence else self.PERSISTENCE
-        pass
 
     def encode(self, obj: BaseEstimator, description: Optional[str], params: Optional[Dict]) -> FrameData:
         buf = self.persistence.encode(obj)
