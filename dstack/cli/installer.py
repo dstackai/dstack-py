@@ -8,8 +8,9 @@ from tempfile import gettempdir
 from typing import Optional, List, Callable
 from uuid import uuid4
 
-from dstack import FrameData, pull_data
+from dstack import pull_data
 from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path, configure
+from dstack.handler import FrameData
 from dstack.version import version_to_int
 
 
@@ -21,7 +22,7 @@ class Java(object):
         return self.java_home / "bin" / self._java()
 
     def version(self) -> str:
-        result = subprocess.run([self.path(), "-version"], capture_output=True)
+        result = subprocess.run([self.path(), "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stderr.decode()
         java_version_str = output.splitlines()[0]
         m = re.match(f'.* version "(.*)"', java_version_str)
@@ -41,7 +42,7 @@ class Installer(object):
     _PROFILE = "dstack"
 
     def __init__(self, config: Config = None, base_path: Optional[Path] = None,
-                 java_factory: Optional[_JavaFactory] = None):
+                 java_factory: Optional[_JavaFactory] = None, verify: bool = True):
 
         def my_java_factory(java_home: Path) -> Java:
             return Java(java_home)
@@ -51,9 +52,10 @@ class Installer(object):
         self.base_path = base_path or config_path.parent
         self._conf = config or from_yaml_file(path=config_path)
         self._java_factory = java_factory if java_factory else my_java_factory
+        self._verify = verify
 
         if not self._conf.get_profile("dstack"):
-            profile = Profile(self._PROFILE, "dstack", None, API_SERVER, verify=True)
+            profile = Profile(self._PROFILE, "dstack", None, API_SERVER, verify=verify)
             self._conf.add_or_replace_profile(profile)
 
         configure(self._conf)

@@ -44,7 +44,7 @@ def config(args: Namespace):
 
 
 def server(args: Namespace):
-    srv = Installer()
+    srv = Installer(verify=not args.no_verify)
 
     if args.install or args.update:
         if srv.update():
@@ -57,14 +57,22 @@ def server(args: Namespace):
 
     if args.start:
         java = srv.find_jdk()
+        jar = srv.jar_path()
 
-        if not java:
-            print("Can't find java")
-        else:
-            try:
-                subprocess.run([java.path(), "-jar", srv.jar_path()])
-            except KeyboardInterrupt:
-                print("Server stopped")
+        if not java or not jar:
+            srv.update()
+            java = srv.find_jdk()
+            jar = srv.jar_path()
+
+        cmd = [java.path(), "-jar", jar]
+
+        if args.port:
+            cmd += ["--port", str(args.port)]
+
+        try:
+            subprocess.run(cmd)
+        except KeyboardInterrupt:
+            print("Server stopped")
 
 
 def main():
@@ -127,7 +135,14 @@ def main():
     server_group.add_argument("--version",
                               help="print server version",
                               action="store_true")
-
+    server_parser.add_argument("--port",
+                               help="use specific port",
+                               type=int,
+                               nargs="?")
+    server_parser.add_argument("--no-verify",
+                               help="do not verify SSL certificates",
+                               dest="no_verify",
+                               action="store_true")
     server_parser.set_defaults(func=server)
 
     if len(sys.argv) < 2:

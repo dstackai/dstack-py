@@ -106,11 +106,99 @@ In some cases you not only want to store dataset but retrieve it. You can `pull`
 object from the stack:
 ```python
 import pandas as pd
-from dstack import pull1
-df = pd.read_csv(pull1("my_data"))
+from dstack import pull
+df = pull("my_data")
 ```
 As in the case of plots you can use parameters for data frames too. You can also use
-data frames and plots in the same frame (with certain parameters).
+data frames and plots in the same frame (with certain parameters). It will work with
+`Series` as well.
+
+## Pushing and pulling ML models
+It is also possible to store ML models using `push` and `pull`. Right now such popular
+ML frameworks and libraries like [PyTorch](https://pytorch.org/), [TensorFlow](https://www.tensorflow.org/) and 
+[scikit-learn](https://scikit-learn.org) are supported.
+
+Suppose you have a PyTorch model, for example linear one:
+```python
+import torch
+from dstack import push_frame
+from dstack.torch.handlers import TorchModelEncoder
+
+# define a new model
+class LinearRegression(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super(LinearRegression, self).__init__()
+        self.linear = torch.nn.Linear(input_size, output_size)
+
+    def forward(self, x):
+        out = self.linear(x)
+        return out
+
+model = LinearRegression(1, 1)
+
+# here you are training the model
+for epoch in range(100):
+    ...
+
+# to avoid compatibility issues we will store only model weights   
+TorchModelEncoder.STORE_WHOLE_MODEL = False
+
+# and finally push the model
+push_frame("my_torch_model", model, "My first PyTorch model")        
+```  
+We stored only model weights, so to pull it we should provide model
+class to decoder, because `pull` method is not smart enough to guess which
+particular class to use. The following example shows a common pattern how to use
+pull in this case:
+```python
+from dstack.torch.handlers import TorchModelWeightsDecoder
+from dstack import pull
+
+my_model = pull("my_torch_model", decoder=TorchModelWeightsDecoder(LinearRegression(1, 1)))
+```
+
+In the case of TensorFlow (only version 2 is supported), let's use predefined models to
+show how to deal with them (for custom models technique will be the same as in the case
+of PyTorch which is described above).
+
+```python
+from dstack import push_frame
+import tensorflow as tf
+
+d = 30
+
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Input(shape=(d,)),
+    tf.keras.layers.Dense(1, activation="sigmoid")
+])
+
+# train the model here
+
+# push the model
+push_frame("my_tf_model", model, "My first TF model")
+```
+To pull model you need simply call `pull`, because the model is standard no additional
+information required:
+```python
+from dstack import pull
+
+model1 = pull("my_tf_model")
+```
+
+In the case of scikit-learn all thing as simple as in the TensorFlow case:
+```python
+from sklearn.linear_model import LinearRegression
+from dstack import push_frame
+
+# train the simple Linear regression
+model = LinearRegression()
+
+# train the model as usual
+
+# push it
+push_frame("my_linear_model", model, "My first linear model")
+```
+To pull the model in this case call `pull("my_linear_model")`.
 
 ## Documentation
 
