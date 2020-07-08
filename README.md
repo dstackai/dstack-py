@@ -201,7 +201,7 @@ push_frame("my_linear_model", model, "My first linear model")
 To pull the model in this case call `pull("my_linear_model")`.
 
 ## How to install dstack server locally
-From version 0.4 it is possible to use a local version of [dstack](https://github.com/datackai/dstack) server. 
+From version 0.4 it is possible to use a local version of [dstack](https://github.com/dstackai/dstack) server. 
 To install it, use the following command:
 ```bash
 dstack server --install
