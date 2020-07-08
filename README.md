@@ -7,7 +7,10 @@ The **dstack** package and **command line tool** must be installed with either *
 ```bash
 pip install dstack
 ```
-
+or
+```bash
+conda install -c dstack.ai dstack
+```
 Note, *only* Python 3 is supported and if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
 
 ## Configuration
@@ -32,6 +35,25 @@ By default, the configuration profile is stored locally, i.e. in your working di
 If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
 
 See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information about command line tools or type `dstack config --help`.
+
+## How to install dstack server locally
+From version 0.4 it is possible to use a local version of [dstack](https://github.com/dstackai/dstack) 
+server.
+ 
+To install it, use the following command:
+```bash
+dstack server --install
+```
+This command installs the latest version of the server. If environment variable `JAVA_HOME` is set
+and version of JDK is compatible with the server, that version will be used. In the case if 
+installer can't find `JAVA_HOME` or JDK version is incompatible with current server version
+it will download a compatible version by itself. To update server use `dstack server --update`. 
+
+After install/update the server can be started by `dstack server --start` (if you try to 
+run this command before `--install`, server will be installed automatically). 
+Follow instructions provided by the server in the terminal.
+
+Use `dstack server --help` for more information.
 
 ## Publishing simple plots
 
@@ -199,23 +221,6 @@ model = LinearRegression()
 push_frame("my_linear_model", model, "My first linear model")
 ```
 To pull the model in this case call `pull("my_linear_model")`.
-
-## How to install dstack server locally
-From version 0.4 it is possible to use a local version of [dstack](https://github.com/dstackai/dstack) server. 
-To install it, use the following command:
-```bash
-dstack server --install
-```
-This command installs the latest version of the server. If environment variable `JAVA_HOME` is set
-and version of JDK is compatible with the server, that version will be used. In the case if 
-installer can't find `JAVA_HOME` or JDK version is incompatible with current server version
-it will download a compatible version by itself. To update server use `dstack server --update`. 
-
-After install/update the server can be started by `dstack server --start` (if you try to 
-run this command before `--install`, server will be installed automatically). 
-Follow instructions provided by the server in the terminal.
-
-Use `dstack server --help` for more information.
 
 ## Documentation
 
