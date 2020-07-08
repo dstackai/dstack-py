@@ -200,6 +200,23 @@ push_frame("my_linear_model", model, "My first linear model")
 ```
 To pull the model in this case call `pull("my_linear_model")`.
 
+## How to install dstack server locally
+From version 0.4 it is possible to use a local version of [dstack](https://github.com/datackai/dstack) server. 
+To install it, use the following command:
+```bash
+dstack server --install
+```
+This command installs the latest version of the server. If environment variable `JAVA_HOME` is set
+and version of JDK is compatible with the server, that version will be used. In the case if 
+installer can't find `JAVA_HOME` or JDK version is incompatible with current server version
+it will download a compatible version by itself. To update server use `dstack server --update`. 
+
+After install/update the server can be started by `dstack server --start` (if you try to 
+run this command before `--install`, server will be installed automatically). 
+Follow instructions provided by the server in the terminal.
+
+Use `dstack server --help` for more information.
+
 ## Documentation
 
 For more details on the API and code samples, check out the [docs](https://docs.dstack.ai).
