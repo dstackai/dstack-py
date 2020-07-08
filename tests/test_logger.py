@@ -46,7 +46,6 @@ class TestLogger(TestBase):
         my_logger = log.InMemoryLogger()
         log.enable(logger=my_logger)
         log.debug(data=None, extra=None)
-        print(my_logger.io.getvalue())
 
     def test_default_log_file_location(self):
         config = YamlConfig({}, Path("/tmp/test/.dstack/config.yaml"))

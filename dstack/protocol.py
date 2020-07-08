@@ -1,12 +1,12 @@
-import base64
 import json
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, Optional, IO
 
 import requests
 
 import dstack.logger as log
 from dstack.config import Profile
+from dstack.content import Content
 
 
 class MatchException(ValueError):
@@ -31,7 +31,7 @@ class Protocol(ABC):
         pass
 
     @abstractmethod
-    def download(self, url, filename):
+    def download(self, url) -> (IO, int):
         pass
 
 
@@ -45,31 +45,37 @@ class JsonProtocol(Protocol):
 
     def push(self, stack: str, token: str, data: Dict) -> Dict:
         data["stack"] = stack
-        size = self.length(data)
-        if size < self.MAX_SIZE:
+        if self.length(data) < self.MAX_SIZE:
+            for attach in data["attachments"]:
+                attach["data"] = attach["data"].base64value()
+
             result = self.do_request("/stacks/push", data, token)
         else:
-            attachments = data["attachments"]
             content = []
-            for index, attach in enumerate(attachments):
-                content.append(base64.b64decode(attach.pop("data")))
-                attach["length"] = len(content[index])
+
+            for attach in data["attachments"]:
+                d = attach.pop("data")
+                content.append(d)
+                attach["length"] = d.length()
+
             result = self.do_request("/stacks/push", data, token)
+
             for attach in result["attachments"]:
                 self.do_upload(attach["upload_url"], content[attach["index"]])
-            result = result
+
         return result
 
     def access(self, stack: str, token: str) -> Dict:
         return self.do_request("/stacks/access", {"stack": stack}, token)
 
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
-        params = {} if params is None else params
+        empty = params is None
+        params = {} if empty else params
         url = f"/stacks/{stack}"
         res = self.do_request(url, None, token=token, method="GET")
         attachments = res["stack"]["head"]["attachments"]
         for index, attach in enumerate(attachments):
-            if set(attach["params"].items()) == set(params.items()):
+            if (len(attachments) == 1 and empty) or set(attach["params"].items()) == set(params.items()):
                 frame = res["stack"]["head"]["id"]
                 attach_url = f"/attachs/{stack}/{frame}/{index}?download=true"
                 return self.do_request(attach_url, None, token=token, method="GET")
@@ -96,23 +102,25 @@ class JsonProtocol(Protocol):
         log.debug(event_id=event_id, func=log.erase_token, request_headers=response.request.headers)
         log.debug(event_id=event_id, func=log.ensure_json_serialization, response_headers=response.headers)
 
+        if response.status_code != 200:
+            # FIXME: parse content
+            log.debug(event_id=event_id, response_body=str(response.content))
+
         response.raise_for_status()
         return response.json(encoding=self.ENCODING)
 
-    def download(self, url, filename):
+    def download(self, url) -> (IO, int):
         r = requests.get(url, stream=True, verify=self.verify)
 
         log.debug(func=log.ensure_json_serialization, url=url, reponse_headers=r.headers)
 
-        with open(filename, 'wb') as fd:
-            for chunk in r.iter_content(chunk_size=65536):
-                fd.write(chunk)
+        return r.raw, int(r.headers['Content-length'])
 
-    def do_upload(self, upload_url: str, data: bytes):
+    def do_upload(self, upload_url: str, data: Content):
         event_id = log.uuid()
-        log.debug(event_id=event_id, url=upload_url, length=len(data))
+        log.debug(event_id=event_id, url=upload_url, length=data.length())
 
-        response = requests.put(url=upload_url, data=data, verify=self.verify)
+        response = requests.put(url=upload_url, data=data.stream(), verify=self.verify)
 
         log.debug(event_id=event_id, func=log.ensure_json_serialization, request_headers=response.request.headers)
         log.debug(event_id=event_id, func=log.ensure_json_serialization, response_headers=response.headers)
@@ -120,17 +128,29 @@ class JsonProtocol(Protocol):
         response.raise_for_status()
 
     def length(self, data: Dict):
-        return len(json.dumps(data).encode(self.ENCODING))
+        memo = []
+        attachments_length = 0
+        for attach in data["attachments"]:
+            d = attach.pop("data")
+            attachments_length += d.base64length() + len("data") + 8
+            memo.append(d)
+
+        length_without_data = len(json.dumps(data).encode(self.ENCODING))
+
+        for index, attach in enumerate(data["attachments"]):
+            attach["data"] = memo[index]
+
+        return length_without_data + attachments_length
 
 
 class ProtocolFactory(ABC):
     @abstractmethod
-    def create_protocol(self, profile: Profile) -> Protocol:
+    def create(self, profile: Profile) -> Protocol:
         pass
 
 
 class JsonProtocolFactory(ProtocolFactory):
-    def create_protocol(self, profile: Profile) -> Protocol:
+    def create(self, profile: Profile) -> Protocol:
         return JsonProtocol(profile.server, profile.verify)
 
 
@@ -143,4 +163,4 @@ def setup_protocol(protocol_factory: ProtocolFactory):
 
 
 def create_protocol(profile: Profile) -> Protocol:
-    return __protocol_factory.create_protocol(profile)
+    return __protocol_factory.create(profile)

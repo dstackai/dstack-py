@@ -7,7 +7,10 @@ The **dstack** package and **command line tool** must be installed with either *
 ```bash
 pip install dstack
 ```
-
+or
+```bash
+conda install -c dstack.ai dstack
+```
 Note, *only* Python 3 is supported and if you use **pip**, it is highly recommended to use **virtualenv** to manage local environment. 
 
 ## Configuration
@@ -32,6 +35,25 @@ By default, the configuration profile is stored locally, i.e. in your working di
 If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
 
 See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information about command line tools or type `dstack config --help`.
+
+## How to install dstack server locally
+From version 0.4 it is possible to use a local version of [dstack](https://github.com/dstackai/dstack) 
+server.
+ 
+To install it, use the following command:
+```bash
+dstack server --install
+```
+This command installs the latest version of the server. If environment variable `JAVA_HOME` is set
+and version of JDK is compatible with the server, that version will be used. In the case if 
+installer can't find `JAVA_HOME` or JDK version is incompatible with current server version
+it will download a compatible version by itself. To update server use `dstack server --update`. 
+
+After install/update the server can be started by `dstack server --start` (if you try to 
+run this command before `--install`, server will be installed automatically). 
+Follow instructions provided by the server in the terminal.
+
+Use `dstack server --help` for more information.
 
 ## Publishing simple plots
 
@@ -107,10 +129,98 @@ object from the stack:
 ```python
 import pandas as pd
 from dstack import pull
-df = pd.read_csv(pull("my_data"))
+df = pull("my_data")
 ```
 As in the case of plots you can use parameters for data frames too. You can also use
-data frames and plots in the same frame (with certain parameters).
+data frames and plots in the same frame (with certain parameters). It will work with
+`Series` as well.
+
+## Pushing and pulling ML models
+It is also possible to store ML models using `push` and `pull`. Right now such popular
+ML frameworks and libraries like [PyTorch](https://pytorch.org/), [TensorFlow](https://www.tensorflow.org/) and 
+[scikit-learn](https://scikit-learn.org) are supported.
+
+Suppose you have a PyTorch model, for example linear one:
+```python
+import torch
+from dstack import push_frame
+from dstack.torch.handlers import TorchModelEncoder
+
+# define a new model
+class LinearRegression(torch.nn.Module):
+    def __init__(self, input_size, output_size):
+        super(LinearRegression, self).__init__()
+        self.linear = torch.nn.Linear(input_size, output_size)
+
+    def forward(self, x):
+        out = self.linear(x)
+        return out
+
+model = LinearRegression(1, 1)
+
+# here you are training the model
+for epoch in range(100):
+    ...
+
+# to avoid compatibility issues we will store only model weights   
+TorchModelEncoder.STORE_WHOLE_MODEL = False
+
+# and finally push the model
+push_frame("my_torch_model", model, "My first PyTorch model")        
+```  
+We stored only model weights, so to pull it we should provide model
+class to decoder, because `pull` method is not smart enough to guess which
+particular class to use. The following example shows a common pattern how to use
+pull in this case:
+```python
+from dstack.torch.handlers import TorchModelWeightsDecoder
+from dstack import pull
+
+my_model = pull("my_torch_model", decoder=TorchModelWeightsDecoder(LinearRegression(1, 1)))
+```
+
+In the case of TensorFlow (only version 2 is supported), let's use predefined models to
+show how to deal with them (for custom models technique will be the same as in the case
+of PyTorch which is described above).
+
+```python
+from dstack import push_frame
+import tensorflow as tf
+
+d = 30
+
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Input(shape=(d,)),
+    tf.keras.layers.Dense(1, activation="sigmoid")
+])
+
+# train the model here
+
+# push the model
+push_frame("my_tf_model", model, "My first TF model")
+```
+To pull model you need simply call `pull`, because the model is standard no additional
+information required:
+```python
+from dstack import pull
+
+model1 = pull("my_tf_model")
+```
+
+In the case of scikit-learn all thing as simple as in the TensorFlow case:
+```python
+from sklearn.linear_model import LinearRegression
+from dstack import push_frame
+
+# train the simple Linear regression
+model = LinearRegression()
+
+# train the model as usual
+
+# push it
+push_frame("my_linear_model", model, "My first linear model")
+```
+To pull the model in this case call `pull("my_linear_model")`.
 
 ## Documentation
 

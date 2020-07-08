@@ -1,6 +1,15 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Any, List, TypeVar
 
-from dstack.stack import Handler, FrameData
+from dstack.bokeh import BokehEncoderFactory
+from dstack.files import FileEncoderFactory
+from dstack.handler import FrameData, Encoder, Decoder, AbstractFactory
+from dstack.matplotlib import MatplotlibEncoderFactory
+from dstack.pandas import DataFrameEncoderFactory, DataFrameDecoderFactory, SeriesDecoderFactory, \
+    GeneralCsvDecoderFactory, SeriesEncoderFactory
+from dstack.plotly import PlotlyEncoderFactory
+from dstack.sklearn import SklearnModelEncoderFactory, SklearnModelDecoderFactory
+from dstack.tensorflow import TensorFlowKerasModelDecoderFactory, TensorFlowKerasModelEncoderFactory
+from dstack.torch import TorchModelEncoderFactory, TorchModelDecoderFactory
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -10,18 +19,34 @@ class UnsupportedObjectTypeException(Exception):
         self.obj = obj
 
 
-class AutoHandler(Handler):
+T = TypeVar("T")
+S = TypeVar("S")
+
+
+class AutoHandler(Encoder[Any], Decoder[Any]):
     """A handler which selects appropriate implementation depending on `obj` itself in runtime."""
 
     def __init__(self):
-        self.chain = {
-            "<class 'matplotlib.figure.Figure'>": matplotlib_factory,
-            "<class 'plotly.graph_objs._figure.Figure'>": plotly_factory,
-            "<class 'bokeh.plotting.figure.Figure'>": bokeh_factory,
-            "<class 'pandas.core.frame.DataFrame'>": pandas_factory
-        }
+        self.encoders = [
+            MatplotlibEncoderFactory(),
+            PlotlyEncoderFactory(),
+            BokehEncoderFactory(),
+            DataFrameEncoderFactory(),
+            SeriesEncoderFactory(),
+            SklearnModelEncoderFactory(),
+            TorchModelEncoderFactory(),
+            TensorFlowKerasModelEncoderFactory(),
+            FileEncoderFactory()]
 
-    def to_frame_data(self, obj, description: Optional[str], params: Optional[Dict]) -> FrameData:
+        self.decoders = [
+            DataFrameDecoderFactory(),
+            SeriesDecoderFactory(),
+            GeneralCsvDecoderFactory(),
+            SklearnModelDecoderFactory(),
+            TorchModelDecoderFactory(),
+            TensorFlowKerasModelDecoderFactory()]
+
+    def encode(self, obj: Any, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Create frame data from any known object.
 
         Args:
@@ -35,29 +60,15 @@ class AutoHandler(Handler):
         Raises:
             UnsupportedObjectTypeException: In the case of unknown object type.
         """
-        tpe = str(type(obj))
-        if tpe in self.chain:
-            handler = self.chain[tpe]()
-        else:
-            raise UnsupportedObjectTypeException(obj)
-        return handler.to_frame_data(obj, description, params)
+        return self.find_handler(obj, self.encoders).encode(obj, description, params)
 
+    def decode(self, data: FrameData) -> Any:
+        return self.find_handler(data.media_type(), self.decoders).decode(data)
 
-def matplotlib_factory() -> Handler:
-    from dstack.matplotlib import MatplotlibHandler
-    return MatplotlibHandler()
+    @staticmethod
+    def find_handler(obj: T, chain: List[AbstractFactory[T, S]]) -> S:
+        for factory in chain:
+            if factory.accept(obj):
+                return factory.create()
 
-
-def plotly_factory() -> Handler:
-    from dstack.plotly import PlotlyHandler
-    return PlotlyHandler()
-
-
-def bokeh_factory() -> Handler:
-    from dstack.bokeh import BokehHandler
-    return BokehHandler()
-
-
-def pandas_factory() -> Handler:
-    from dstack.pandas import DataFrameHandler
-    return DataFrameHandler()
+        raise UnsupportedObjectTypeException(obj)

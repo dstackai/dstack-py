@@ -25,7 +25,7 @@ class Profile(object):
          verify: Enable SSL certificate verification.
     """
 
-    def __init__(self, name: str, user: str, token: str, server: str, verify: bool):
+    def __init__(self, name: str, user: str, token: Optional[str], server: str, verify: bool):
         """Create a profile object.
 
         Args:
@@ -42,9 +42,9 @@ class Profile(object):
 
 
 class Config(ABC):
-    """An abstract class for configuration. It is needed to access and manage to profiles.
-    By default system will use `YamlConfig` which works with YAML files located in working and home directories,
-    but in some cases may be useful to store profiles in database or somewhere. To do so one have to inherit this class
+    """An abstract class for the configuration. It is needed to access and manage profiles.
+    By default, system will use `YamlConfig` which works with YAML files located in working and home directories,
+    but in some cases may be useful to store profiles in database or somewhere else. To do so one have to inherit this class
     and override certain methods in the proper way.
     """
 
@@ -96,8 +96,43 @@ class Config(ABC):
         """
         pass
 
+    @abstractmethod
+    def set_property(self, name: str, value: str):
+        pass
 
-class YamlConfig(Config):
+    @abstractmethod
+    def get_property(self, name: str) -> str:
+        pass
+
+
+class DictionaryBasedConfig(Config, ABC):
+    @abstractmethod
+    def get_dict(self):
+        pass
+
+    def set_property(self, name: str, value: str):
+        data = self.get_dict()
+        path = name.split(".")
+
+        for p in path[:-1]:
+            data[p] = data.get(p, {})
+            data = data[p]
+
+        data[path[-1]] = value
+
+    def get_property(self, name: str) -> Optional[str]:
+        data = self.get_dict()
+        path = name.split(".")
+
+        for p in path:
+            data = data.get(p, None)
+            if not data:
+                return None
+
+        return data
+
+
+class YamlConfig(DictionaryBasedConfig):
     """A class implements `Config` contracts for YAML format stored on disk. This implementation relies on PyYAML package.
     Comments can't be used in config file, because `save` method will remove it all. So, editing of configuration files
     is not recommended. To configure please use dstack CLI tools.
@@ -128,7 +163,7 @@ class YamlConfig(Config):
         """Return profile with specified name or `None`.
 
         Notes:
-            In the case if server is not configured standard endpoint will be used.
+            In the case if server is not configured the standard endpoint will be used.
 
         Args:
             name (str): A name of profile.
@@ -141,7 +176,7 @@ class YamlConfig(Config):
         if profile is None:
             return None
         else:
-            return Profile(name, profile["user"], profile["token"],
+            return Profile(name, profile["user"], profile.get("token", None),
                            profile.get("server", API_SERVER), profile.get("verify", True))
 
     def add_or_replace_profile(self, profile: Profile):
@@ -154,7 +189,9 @@ class YamlConfig(Config):
             profile: Profile to add or replace.
         """
         profiles = self.yaml_data.get("profiles", {})
-        update = {"token": profile.token, "user": profile.user}
+        update = {"user": profile.user}
+        if profile.token:
+            update["token"] = profile.token
         if profile.server != API_SERVER:
             update["server"] = profile.server
         if not profile.verify:
@@ -177,10 +214,14 @@ class YamlConfig(Config):
     def __repr__(self) -> str:
         return str(self.yaml_data)
 
+    def get_dict(self):
+        return self.yaml_data
 
-class InPlaceConfig(Config):
+
+class InPlaceConfig(DictionaryBasedConfig):
     def __init__(self):
         self.profiles = {}
+        self.props = {}
 
     def list_profiles(self) -> Dict[str, Profile]:
         return self.profiles
@@ -192,12 +233,15 @@ class InPlaceConfig(Config):
         self.profiles[profile.name] = profile
 
     def save(self):
-        raise RuntimeError("In-place configuration can not be saved")
+        pass
 
     def remove_profile(self, name: str) -> Profile:
         profile = self.profiles[name]
         del self.profiles[name]
         return profile
+
+    def get_dict(self):
+        return self.props
 
 
 class ConfigFactory(ABC):
@@ -209,18 +253,25 @@ class ConfigFactory(ABC):
 class YamlConfigFactory(ConfigFactory):
 
     def get_config(self) -> Config:
-        return from_yaml_file(error_if_not_exist=True)
+        return from_yaml_file(_get_config_path(), error_if_not_exist=True)
 
 
-def from_yaml_file(use_global_settings: Optional[bool] = None,
-                   dstack_dir: str = ".dstack", error_if_not_exist: bool = False) -> Config:
+def _get_config_path(use_global_settings: Optional[bool] = None,
+                     base_dir: Optional[str] = None) -> Path:
+    base_dir = base_dir or ".dstack"
+    path = Path(base_dir) / "config.yaml"
+
+    if use_global_settings or (use_global_settings is None and not path.exists()):
+        path = Path.home() / path
+
+    return path
+
+
+def from_yaml_file(path: Path, error_if_not_exist: bool = False) -> Config:
     """Load YAML configuration.
 
     Args:
-        use_global_settings: Force to use global settings (located in home directory).
-            If it's not set algorithm tries to find settings locally, if it fails it looks up in home directory.
-            In the case than it's `True` it uses global settings otherwise local ones.
-        dstack_dir: A directory where all dstack stuff is stored, buy default is `.dstack`.
+        path: Path to config file.
         error_if_not_exist: Force to produce error in the case of the file does not exist, by default it is `False`.
     Returns:
         YAML based configuration.
@@ -228,16 +279,12 @@ def from_yaml_file(use_global_settings: Optional[bool] = None,
     Raises:
         ConfigurationException: If `error_if_not_exist` is `True` and file does not exist.
     """
-    path = local_path = Path(dstack_dir) / Path("config.yaml")
-
-    if use_global_settings or (use_global_settings is None and not path.exists()):
-        path = Path.home() / path
 
     if not path.exists():
         if error_if_not_exist:
             raise ConfigurationException(f"Configuration file does not exist, type `dstack config` in command line")
         else:
-            return YamlConfig({}, path if use_global_settings else local_path)
+            return YamlConfig({}, path)
 
     with path.open() as f:
         return YamlConfig(yaml.load(f, Loader=yaml.FullLoader), path)

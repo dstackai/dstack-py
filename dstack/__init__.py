@@ -1,18 +1,21 @@
 import base64
 from io import StringIO
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, Any
 
 from dstack.auto import AutoHandler
-from dstack.config import Config, ConfigFactory, YamlConfigFactory, from_yaml_file, ConfigurationException, get_config, \
-    Profile
+from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
+    from_yaml_file, ConfigurationException, get_config, Profile
+from dstack.content import StreamContent, BytesContent, MediaType
+from dstack.handler import Encoder, Decoder, T
 from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
-from dstack.stack import Handler, EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none
+from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
+               access: Optional[str] = None,
                message: Optional[str] = None,
                params: Optional[Dict] = None,
-               handler: Handler = AutoHandler(),
+               encoder: Optional[Encoder[Any]] = None,
                profile: str = "default",
                **kwargs) -> str:
     """Create frame in the stack, commits and pushes data in a single operation.
@@ -21,9 +24,11 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         stack: A stack you want to commit and push to.
         obj: Object to commit and push, e.g. plot.
         description: Optional description of the object.
+        access: Access level for the stack. It may be public, private or None. It is None by default, so it will be
+                default access level in user's settings.
         message: Push message to describe what's new in this revision.
         params: Optional parameters.
-        handler: Specify handler to handle the object, by default `AutoHandler` will be used.
+        encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
         **kwargs: Optional parameters is an alternative to params. If both are present this one
             will be merged into params.
@@ -32,24 +37,22 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
     frame = create_frame(stack=stack,
-                         handler=handler,
                          profile=profile,
+                         access=access,
                          check_access=False)
-    frame.commit(obj, description, params, **kwargs)
+    frame.commit(obj, description, params, encoder, **kwargs)
     return frame.push(message)
 
 
 def create_frame(stack: str,
-                 handler: Handler = AutoHandler(),
                  profile: str = "default",
+                 access: Optional[str] = None,
                  auto_push: bool = False,
                  check_access: bool = True) -> StackFrame:
     """Create a new stack frame. The method also checks access to specified stack.
 
     Args:
         stack: A stack you want to use. It must be a full path to the stack e.g. `project/sub-project/plot`.
-        handler: A handler which can be specified in the case of custom content,
-            but by default it is AutoHandler.
         profile: A profile refers to credentials, i.e. username and token. Default profile is 'default'.
             The system is looking for specified profile as follows:
             it looks into working directory to find a configuration file (local configuration),
@@ -68,7 +71,12 @@ def create_frame(stack: str,
 
             if <PROFILE> is not specified 'default' profile will be created. The system asks you about token
             from command line, make sure that you have already obtained token from the site.
-        auto_push:  Tells the system to push frame just after commit. It may be useful if you
+        access: Specify access level for this stack. It may be one of the following:
+            private - This means the stack will be visible only for the author.
+            public  - The stack will be accessible for everyone.
+            None    - Default access level will be used, one can find it in own settings on dstack server.
+            If it is not specified default access level will be used.
+        auto_push:  Tells the system to push frame just after the commit. It may be useful if you
             want to see result immediately. Default is False.
         check_access: Check access to be sure about credentials before trying to actually push something.
             Default is `True`.
@@ -80,13 +88,15 @@ def create_frame(stack: str,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
-    config = get_config()
-    profile = config.get_profile(profile)
+    if access and access not in ["private", "public"]:
+        raise ValueError(f"access can be only private, public or None but found {access}")
+
+    profile = get_config().get_profile(profile)
 
     frame = StackFrame(stack=stack,
                        user=profile.user,
                        token=profile.token,
-                       handler=handler,
+                       access=access,
                        auto_push=auto_push,
                        protocol=create_protocol(profile),
                        encryption=get_encryption(profile))
@@ -96,10 +106,10 @@ def create_frame(stack: str,
     return frame
 
 
-def pull(stack: str,
-         profile: str = "default",
-         filename: Optional[str] = None,
-         params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
+def pull1(stack: str,
+          profile: str = "default",
+          filename: Optional[str] = None,
+          params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
     """Pull data object from stack frame (head) which matches specified parameters.
 
     Args:
@@ -116,29 +126,42 @@ def pull(stack: str,
     Raises:
         MatchException if there is no object that matches the parameters.
     """
-    config = get_config()
-    profile = config.get_profile(profile)
-    protocol = create_protocol(profile)
-    params = merge_or_none(params, kwargs)
-    path = stack_path(profile.user, stack)
-    r = protocol.pull(path, profile.token, params)
-    if "data" not in r["attachment"]:
-        download_url = r["attachment"]["download_url"]
-        if filename is not None:
-            protocol.download(download_url, filename)
-            return filename
-        else:
-            return download_url
+    d = pull_data(stack, profile, params, **kwargs)
+    if filename is not None:
+        with open(filename, "wb") as f:
+            f.write(d.data.value())
+        return filename
     else:
-        if filename is not None:
-            f = open(filename, "wb")
-            f.write(base64.b64decode(r["attachment"]["data"]))
-            f.close()
-            return filename
-        else:
-            data = base64.b64decode(r["attachment"]["data"])
-            return StringIO(data.decode("utf-8"))
+        return StringIO(d.data.value().decode("utf-8"))
 
 
 def get_encryption(profile: Profile) -> EncryptionMethod:
     return NoEncryption()
+
+
+def pull_data(stack: str,
+             profile: str = "default",
+             params: Optional[Dict] = None, **kwargs) -> FrameData:
+    profile = get_config().get_profile(profile)
+    protocol = create_protocol(profile)
+    params = merge_or_none(params, kwargs)
+    path = stack_path(profile.user, stack)
+    res = protocol.pull(path, profile.token, params)
+    attach = res["attachment"]
+
+    data = \
+        BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
+        StreamContent(*protocol.download(attach["download_url"]))
+
+    media_type = MediaType(attach["content_type"], attach.get("application", None))
+    return FrameData(data, media_type, attach.get("description", None),
+                     attach.get("params", None), attach.get("settings", None))
+
+
+def pull(stack: str,
+         profile: str = "default",
+         params: Optional[Dict] = None,
+         decoder: Optional[Decoder[T]] = None,
+         **kwargs) -> T:
+    decoder = decoder if decoder else AutoHandler()
+    return decoder.decode(pull_data(stack, profile, params, **kwargs))

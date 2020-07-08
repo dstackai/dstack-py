@@ -1,15 +1,16 @@
+import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
-from getpass import getpass
-from typing import Optional
 
-from dstack.config import from_yaml_file, Profile, API_SERVER
+from dstack.cli import confirm, get_or_ask
+from dstack.cli.installer import Installer
+from dstack.config import from_yaml_file, Profile, API_SERVER, _get_config_path
 from dstack.logger import hide_token
 from dstack.version import __version__ as version
 
 
 def config(args: Namespace):
-    conf = from_yaml_file(args.use_global_settings)
+    conf = from_yaml_file(_get_config_path(args.use_global_settings))
     if args.list:
         print("list of available profiles:\n")
         profiles = conf.list_profiles()
@@ -20,7 +21,6 @@ def config(args: Namespace):
             print(f"\tToken: {hide_token(profile.token)}")
             if profile.server != API_SERVER:
                 print(f"\tServer: {profile.server}")
-        return
 
     if args.profile is not None:
         profile = conf.get_profile(args.profile)
@@ -43,24 +43,36 @@ def config(args: Namespace):
     conf.save()
 
 
-def confirm(message: str) -> bool:
-    reply = None
-    while reply != "y" and reply != "n":
-        reply = input(f"{message} (y/n)? ").lower().rstrip()
-    return reply == "y"
+def server(args: Namespace):
+    srv = Installer(verify=not args.no_verify)
 
+    if args.install or args.update:
+        if srv.update():
+            print("Server is successfully updated")
+        else:
+            print("Server is up to date")
 
-def get_or_ask(args: Namespace, profile: Optional[Profile], field: str, prompt: str, secure: bool) -> str:
-    old_value = getattr(profile, field) if profile is not None else None
-    obj = getattr(args, field)
-    if obj is None:
-        value = None
-        while value is None:
-            value = getpass(prompt) if secure else input(prompt)
-            value = value if value.strip() != "" else old_value
-        return value
-    else:
-        return obj
+    if args.version:
+        print(srv.version() or "Server is not installed")
+
+    if args.start:
+        java = srv.find_jdk()
+        jar = srv.jar_path()
+
+        if not java or not jar:
+            srv.update()
+            java = srv.find_jdk()
+            jar = srv.jar_path()
+
+        cmd = [java.path(), "-jar", jar]
+
+        if args.port:
+            cmd += ["--port", str(args.port)]
+
+        try:
+            subprocess.run(cmd)
+        except KeyboardInterrupt:
+            print("Server stopped")
 
 
 def main():
@@ -108,6 +120,30 @@ def main():
                               help="list configured profiles",
                               action="store_true")
     config_parser.set_defaults(func=config)
+
+    server_parser = subparsers.add_parser("server", help="manage your dstack server")
+    server_group = server_parser.add_mutually_exclusive_group()
+    server_group.add_argument("--install",
+                              help="install server",
+                              action="store_true")
+    server_group.add_argument("--update",
+                              help="update server",
+                              action="store_true")
+    server_group.add_argument("--start",
+                              help="start server",
+                              action="store_true")
+    server_group.add_argument("--version",
+                              help="print server version",
+                              action="store_true")
+    server_parser.add_argument("--port",
+                               help="use specific port",
+                               type=int,
+                               nargs="?")
+    server_parser.add_argument("--no-verify",
+                               help="do not verify SSL certificates",
+                               dest="no_verify",
+                               action="store_true")
+    server_parser.set_defaults(func=server)
 
     if len(sys.argv) < 2:
         parser.print_help()
