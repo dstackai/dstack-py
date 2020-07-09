@@ -1,6 +1,5 @@
 import re
 from abc import ABC
-from typing import Optional
 
 from dstack.config import Profile
 from dstack.protocol import Protocol
@@ -20,8 +19,8 @@ class Context(object):
 
 
 class ContextAwareObject(ABC):
-    def __init__(self, context: Optional[Context] = None):
-        self._context = context
+    def __init__(self):
+        self._context = None
 
     def set_context(self, context: Context):
         self._context = context

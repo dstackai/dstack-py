@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Dict
 
-from dstack import Encoder, FrameData, StreamContent, MediaType
+from dstack import Encoder, FrameData, StreamContent, MediaType, _pull, Decoder, T
 from dstack.content import CONTENT_TYPE_MAP_REVERSED
 
 
@@ -16,4 +16,10 @@ class FileEncoder(Encoder[Path]):
 
 class PathEncoder(Encoder[Path]):
     def encode(self, obj: Path, description: Optional[str], params: Optional[Dict]) -> FrameData:
+        context = self.get_context()
+        _pull(context, decoder=PathDecoder())
+
+
+class PathDecoder(Decoder[Path]):
+    def decode(self, data: FrameData) -> T:
         pass

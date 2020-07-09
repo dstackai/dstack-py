@@ -1,7 +1,6 @@
 from typing import Optional, Dict, Any, List, TypeVar
 
 from dstack.bokeh import BokehEncoderFactory
-from dstack.context import Context
 from dstack.files import FileEncoderFactory
 from dstack.handler import FrameData, Encoder, Decoder, AbstractFactory
 from dstack.matplotlib import MatplotlibEncoderFactory
@@ -27,8 +26,8 @@ S = TypeVar("S")
 class AutoHandler(Encoder[Any], Decoder[Any]):
     """A handler which selects appropriate implementation depending on `obj` itself in runtime."""
 
-    def __init__(self, context: Context):
-        super().__init__(context)
+    def __init__(self):
+        super().__init__()
         self.encoders = [
             MatplotlibEncoderFactory(),
             PlotlyEncoderFactory(),
