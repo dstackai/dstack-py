@@ -67,10 +67,13 @@ def server(args: Namespace):
         cmd = [java.path(), "-jar", jar]
 
         if args.port:
-            cmd += ["--port", str(args.port)]
+            cmd += ["--port", args.port]
+
+        if args.use_global_settings:
+            cmd += ["--global"]
 
         try:
-            subprocess.run(cmd)
+            subprocess.run([str(x) for x in cmd])
         except KeyboardInterrupt:
             print("Server stopped")
 
@@ -143,6 +146,11 @@ def main():
                                help="do not verify SSL certificates",
                                dest="no_verify",
                                action="store_true")
+    server_parser.add_argument("--global",
+                               help="store server data in the home directory",
+                               dest="use_global_settings",
+                               action="store_true")
+
     server_parser.set_defaults(func=server)
 
     if len(sys.argv) < 2:
