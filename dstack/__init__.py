@@ -146,7 +146,7 @@ def pull_data(context: Context,
 
     data = \
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
-            StreamContent(*context.protocol.download(attach["download_url"]))
+        StreamContent(*context.protocol.download(attach["download_url"]))
 
     media_type = MediaType(attach["content_type"], attach.get("application", None))
     return FrameData(data, media_type, attach.get("description", None),
@@ -158,8 +158,15 @@ def pull(stack: str,
          params: Optional[Dict] = None,
          decoder: Optional[Decoder[T]] = None,
          **kwargs) -> T:
-    context = create_context(stack, profile)
-    decoder = decoder if decoder else AutoHandler(context)
+    return _pull(create_context(stack, profile), params, decoder, **kwargs)
+
+
+def _pull(context: Context,
+          params: Optional[Dict] = None,
+          decoder: Optional[Decoder[T]] = None,
+          **kwargs) -> T:
+    decoder = decoder or AutoHandler()
+    decoder.set_context(context)
     return decoder.decode(pull_data(context, params, **kwargs))
 
 

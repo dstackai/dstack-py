@@ -62,11 +62,13 @@ class StackFrame(object):
             **kwargs: Optional parameters is an alternative to params. If both are present this one will
                 be merged into params.
         """
-        encoder = encoder if encoder else AutoHandler(self.context)
+        encoder = encoder or AutoHandler()
+        encoder.set_context(self.context)
         params = merge_or_none(params, kwargs)
         data = encoder.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
+
         if self.auto_push:
             self.push_data(encrypted_data)
 
