@@ -21,6 +21,7 @@ def config(args: Namespace):
             print(f"\tToken: {hide_token(profile.token)}")
             if profile.server != API_SERVER:
                 print(f"\tServer: {profile.server}")
+        return
 
     if args.profile is not None:
         profile = conf.get_profile(args.profile)
