@@ -17,6 +17,13 @@ class TestPandas(TestBase):
         map(lambda x, y: self.assertEqual(x, y), zip(df.dtypes, df1.dtypes))
         self.assertEqual(df["datetime"][0], df1["datetime"][0])
 
+    def test_nullable_types(self):
+        df = pd.DataFrame({"tag1": [10, None], "tag2": [True, None]})
+        df1 = df.astype({"tag1": "Int64", "tag2": pd.BooleanDtype()})
+        push_frame("test/pandas/nullable_types", df1, encoder=DataFrameEncoder(index=False))
+        df2 = pull("test/pandas/nullable_types")
+        map(lambda x, y: self.assertEqual(x, y), zip(df2.dtypes, df1.dtypes))
+
     def test_df_with_index(self):
         raw_data = {"first_name": ["John", "Donald", "Maryam", "Don", "Andrey"],
                     "last_name": ["Milnor", "Knuth", "Mirzakhani", "Zagier", "Okunkov"],
