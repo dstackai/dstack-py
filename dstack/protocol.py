@@ -9,12 +9,20 @@ from dstack.config import Profile
 from dstack.content import Content
 
 
-class MatchException(ValueError):
+class MatchError(ValueError):
     def __init__(self, params: Dict):
         self.params = params
 
     def __str__(self):
         return f"Can't match parameters {self.params}"
+
+
+class StackNotFoundError(ValueError):
+    def __init__(self, stack: str):
+        self.stack = stack
+
+    def __str__(self):
+        return f"Stack f{self.stack} not found"
 
 
 class Protocol(ABC):
@@ -79,9 +87,10 @@ class JsonProtocol(Protocol):
                 frame = res["stack"]["head"]["id"]
                 attach_url = f"/attachs/{stack}/{frame}/{index}?download=true"
                 return self.do_request(attach_url, None, token=token, method="GET")
-        raise MatchException(params)
+        raise MatchError(params)
 
-    def do_request(self, endpoint: str, data: Optional[Dict], token: Optional[str], method: str = "POST") -> Dict:
+    def do_request(self, endpoint: str, data: Optional[Dict],
+                   token: Optional[str], method: str = "POST", stack: Optional[str] = None) -> Dict:
         url = self.url + endpoint
 
         event_id = log.uuid()
@@ -105,6 +114,9 @@ class JsonProtocol(Protocol):
         if response.status_code != 200:
             # FIXME: parse content
             log.debug(event_id=event_id, response_body=str(response.content))
+
+        if stack and response.status_code == 404:
+            raise StackNotFoundError(stack)
 
         response.raise_for_status()
         return response.json(encoding=self.ENCODING)

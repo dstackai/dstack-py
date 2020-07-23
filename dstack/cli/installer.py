@@ -173,6 +173,7 @@ class Installer(object):
 
     @staticmethod
     def _download_data(data: FrameData, path: Path):
+        # FIXME: user FileDecoder here
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
 

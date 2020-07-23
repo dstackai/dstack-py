@@ -20,7 +20,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "pyyaml>=5.1",
-        "requests"
+        "requests",
+        "pandas"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

@@ -29,9 +29,9 @@ class StackFrameTest(TestBase):
         frame.commit(fig, my_desc)
         frame.push()
 
-        attachments = self.protocol.data["attachments"]
-        self.assertEqual("user/plots/my_plot", self.protocol.data["stack"])
-        self.assertIsNotNone(self.protocol.data["id"])
+        self.assertIn("user/plots/my_plot", self.protocol.data)
+        attachments = self.get_data("plots/my_plot")["attachments"]
+        self.assertIsNotNone(self.get_data("plots/my_plot")["id"])
         self.assertEqual("my_token", self.protocol.token)
         self.assertEqual(1, len(attachments))
         self.assertEqual("image/svg+xml", attachments[0]["content_type"])
@@ -40,7 +40,8 @@ class StackFrameTest(TestBase):
         self.assertEqual(my_desc, attachments[0]["description"])
 
     def test_multiple_plots(self):
-        frame = create_frame(stack="plots/my_plot")
+        stack = "plots/my_plot"
+        frame = create_frame(stack=stack)
         p = np.arange(0.0, 1.0, 0.1)
 
         for idx, phase in enumerate(p):
@@ -53,7 +54,7 @@ class StackFrameTest(TestBase):
             frame.commit(fig, params={"phase": phase, "index": idx})
 
         frame.push()
-        attachments = self.protocol.data["attachments"]
+        attachments = self.get_data(stack)["attachments"]
         self.assertEqual(len(p), len(attachments))
         for idx, phase in enumerate(p):
             att = attachments[idx]
@@ -66,13 +67,13 @@ class StackFrameTest(TestBase):
         frame = create_frame(stack="plots/my_plot")
         frame.commit(self.get_figure())
         frame.push()
-        self.assertEqual(f"user/plots/my_plot", self.protocol.data["stack"])
+        self.assertIn(f"user/plots/my_plot", self.protocol.data)
 
     def test_stack_absolute_path(self):
         frame = create_frame(stack="/other/my_plot")
         frame.commit(self.get_figure())
         frame.push()
-        self.assertEqual(f"other/my_plot", self.protocol.data["stack"])
+        self.assertIn(f"other/my_plot", self.protocol.data)
 
     def test_stack_path(self):
         def stack_path(user: str, stack: str) -> str:
@@ -85,18 +86,18 @@ class StackFrameTest(TestBase):
 
     def test_stack_access(self):
         push_frame("test/my_plot", self.get_figure())
-        self.assertNotIn("access", self.protocol.data)
+        self.assertNotIn("access", self.get_data("test/my_plot"))
 
         push_frame("test/my_plot_1", self.get_figure(), access="public")
-        self.assertEqual("public", self.protocol.data["access"])
+        self.assertEqual("public", self.get_data("test/my_plot_1")["access"])
 
         push_frame("test/my_plot_2", self.get_figure(), access="private")
-        self.assertEqual("private", self.protocol.data["access"])
+        self.assertEqual("private", self.get_data("test/my_plot_2")["access"])
 
     def test_per_frame_settings(self):
         push_frame("test/my_plot", self.get_figure())
-        self.assertEqual(python_version, self.protocol.data["settings"]["python"])
-        self.assertIn("os", self.protocol.data["settings"])
+        self.assertEqual(python_version, self.get_data("test/my_plot")["settings"]["python"])
+        self.assertIn("os", self.get_data("test/my_plot")["settings"])
 
     def assertFailed(self, func, *args):
         try:
