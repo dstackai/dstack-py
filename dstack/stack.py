@@ -28,6 +28,15 @@ class NoEncryption(EncryptionMethod):
         return {}
 
 
+class PushResult(object):
+    def __init__(self, frame_id: str, url: str):
+        self.id = frame_id
+        self.url = url
+
+    def __repr__(self) -> str:
+        return self.url
+
+
 class StackFrame(object):
     def __init__(self,
                  context: Context,
@@ -72,7 +81,7 @@ class StackFrame(object):
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self, message: Optional[str] = None) -> str:
+    def push(self, message: Optional[str] = None) -> PushResult:
         """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
@@ -117,9 +126,9 @@ class StackFrame(object):
     def send_access(self):
         self.context.protocol.access(self.context.stack_path(), self.context.profile.token)
 
-    def send_push(self, frame: Dict) -> str:
+    def send_push(self, frame: Dict) -> PushResult:
         res = self.context.protocol.push(self.context.stack_path(), self.context.profile.token, frame)
-        return res["url"]
+        return PushResult(self.id, res["url"])
 
     @staticmethod
     def settings():
