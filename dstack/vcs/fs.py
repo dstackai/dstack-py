@@ -18,7 +18,8 @@ from dstack.protocol import StackNotFoundError
 
 
 class FileAttributes(object):
-    def __init__(self, path: str, size: int, hash_code: str, hash_alg: str, frame_id: Optional[str] = None):
+    def __init__(self, path: str, size: Optional[int], hash_code: Optional[str],
+                 hash_alg: Optional[str], frame_id: Optional[str] = None):
         self.path = path
         self.size = size
         self.hash_code = hash_code
@@ -204,13 +205,20 @@ class FileSystemMetadata(object):
             return False
 
         meta = self.find(attr.path)
-        return meta["hash_code"] != attr.hash_code
+
+        return meta is not None and meta["hash_code"] != attr.hash_code
 
     def list(self) -> List[FileAttributes]:
+        def or_none(r, col):
+            val = r[col]
+            # FIXME: bad solution
+            return None if str(val) in ["nan", "<NA>"] else val
+
         result = []
 
         for index, row in self.df.iterrows():
-            result.append(FileAttributes(str(index), row["size"], row["hash_code"], row["hash_alg"], row["frame_id"]))
+            result.append(FileAttributes(str(index), or_none(row, "size"), or_none(row, "hash_code"),
+                                         or_none(row, "hash_alg"), or_none(row, "frame_id")))
 
         return result
 
@@ -306,13 +314,18 @@ class FileSystem(ContextAwareObject):
 
         for file in metadata.list():
             attr = self.attributes(file.path)
-            if not new_metadata or new_metadata.is_file_changed(attr):
-                result.append(attr)
+            if attr:
+                if not new_metadata or new_metadata.is_file_changed(attr):
+                    result.append(attr)
+            else:
+                metadata.remove(file.path)
 
         return result
 
-    def push(self):
-        _push(self.get_context(), self, encoder=FileSystemEncoder())
+    @inject_metadata
+    def push(self, metadata: Optional[FileSystemMetadata] = None):
+        _push(metadata.context, self, encoder=FileSystemEncoder())
+        metadata.df = self.metadata.df
 
     @inject_metadata
     def fetch(self, metadata: Optional[FileSystemMetadata] = None):
@@ -333,11 +346,10 @@ class FileSystem(ContextAwareObject):
 
     @inject_metadata
     def pull(self, metadata: Optional[FileSystemMetadata] = None):
-        context = self.get_context()
-        new_metadata = self.metadata
+        context = metadata.context
         conflicts = []
 
-        for file in new_metadata.list():
+        for file in metadata.list():
             attr = self.attributes(file.path)
             if metadata.is_file_changed(attr):
                 conflicts.append(attr)
@@ -345,11 +357,13 @@ class FileSystem(ContextAwareObject):
         if conflicts:
             raise LocalChangesFoundError(conflicts)
 
-        for file in new_metadata.list():
+        for file in metadata.list():
             file_context = context.derive(f"{context.stack}/{file.stack_path()}")
             _pull(file_context, decoder=FileAttributesDecoder(self.root / file.path))
 
-        metadata.df = new_metadata.df
+    @inject_metadata
+    def list(self, metadata: Optional[FileSystemMetadata] = None) -> List[FileAttributes]:
+        return metadata.list()
 
     def attributes(self, relative_path: str) -> Optional[FileAttributes]:
         path = self.absolute_path(self.root, relative_path)
@@ -402,6 +416,7 @@ class FileSystemEncoder(Encoder[FileSystem]):
 
         changes = []
         for file in obj.changed_files(fs.metadata if fs else None):
+            print(f"Pushing {file.path}")
             file_context = context.derive(f"{context.stack}/{file.stack_path()}")
             res = _push(file_context, file, encoder=FileAttributesEncoder(obj.root))
             file.frame_id = res.id

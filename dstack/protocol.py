@@ -80,7 +80,7 @@ class JsonProtocol(Protocol):
         empty = params is None
         params = {} if empty else params
         url = f"/stacks/{stack}"
-        res = self.do_request(url, None, token=token, method="GET")
+        res = self.do_request(url, None, token=token, method="GET", stack=stack)
         attachments = res["stack"]["head"]["attachments"]
         for index, attach in enumerate(attachments):
             if (len(attachments) == 1 and empty) or set(attach["params"].items()) == set(params.items()):
@@ -119,6 +119,7 @@ class JsonProtocol(Protocol):
             raise StackNotFoundError(stack)
 
         response.raise_for_status()
+
         return response.json(encoding=self.ENCODING)
 
     def download(self, url) -> (IO, int):
