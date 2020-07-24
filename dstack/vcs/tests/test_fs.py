@@ -1,3 +1,4 @@
+import glob
 import tempfile
 from pathlib import Path
 from typing import List, Union, Dict
@@ -98,8 +99,6 @@ class TestFileSystem(TestBase):
         base = self.absolute_path("mydir")
         self.create_some_files(base)
 
-        # os.chdir(str(base))
-
         fs = FileSystem(base)
         context = create_context("mystack")
         fs.init(context)
@@ -142,8 +141,6 @@ class TestFileSystem(TestBase):
         base = self.absolute_path("mydir")
         self.create_some_files(base)
 
-        # os.chdir(str(base))
-
         fs = FileSystem(base)
         context = create_context("mystack")
         fs.init(context)
@@ -176,7 +173,28 @@ class TestFileSystem(TestBase):
         files = sorted(fs.metadata.list(), key=lambda x: x.path)
         attrs = sorted([attr, attr2, attr3], key=lambda x: x.path)
         self.assertEqual(attrs, files)
-        print(fs.metadata.df)
+        # print(fs.metadata.df)
+
+    def test_list(self):
+        base = self.absolute_path("mydir")
+        self.create_some_files(base)
+
+        fs = FileSystem(base)
+        context = create_context("mystack")
+        fs.init(context)
+        dot = Path(".")
+        tags = {"tag1": "1.0", "tag2": "test"}
+        fs.add([dot / "file1.txt"], tags)
+        # print(fs.metadata.df)
+        attr = fs.list()
+        self.assertEqual("file1.txt", attr[0].path)
+        self.assertEqual(None, attr[0].size)
+        self.assertEqual(None, attr[0].hash_code)
+        self.assertEqual(None, attr[0].hash_alg)
+
+
+    def test_delete_file(self):
+        pass
 
     @staticmethod
     def schema(df: pd.DataFrame) -> Dict[str, str]:
@@ -215,7 +233,6 @@ class TestFileSystem(TestBase):
         base = self.absolute_path("mydir")
 
         files = self.create_some_files(base)
-        # os.chdir(str(base))
 
         context = create_context("myfs")
 
@@ -225,23 +242,20 @@ class TestFileSystem(TestBase):
         fs.init(context)
         fs.add([dot])
 
-        # print(fs.metadata.df)
-
         changed = fs.files_changed()
         fs.push()
+        # print(fs.metadata.df)
         self.assertEqual(len(files), fs.num_files())
         self.assertEqual(set(files), set(changed))
 
         dest = self.absolute_path("dest")
         dest.mkdir(parents=True)
-        # os.chdir(str(dest))
+
         fs1 = FileSystem(dest)
         fs1.checkout(context)
 
         self.assertEqual(len(files), fs1.num_files())
         fs1.pull()
-
-        import glob
 
         for filename in glob.iglob(str(base) + '**/**', recursive=True):
             relative = Path(filename).relative_to(base)
@@ -255,8 +269,6 @@ class TestFileSystem(TestBase):
 
         # push changes
         fs = FileSystem(base)
-        fs.set_context(context)
-        # os.chdir(str(base))
 
         self.assertEqual({'file2.txt', 'subdir1/file4.txt'}, set(fs.files_changed()))
 
@@ -265,10 +277,9 @@ class TestFileSystem(TestBase):
 
         fs1 = FileSystem(dest)
         fs.set_context(context)
-        # os.chdir(str(base))
 
         fs1.fetch()
-        print(fs1.metadata.df)
+        # print(fs1.metadata.df)
         # fs1.pull_files()
         self.assertEqual({'file2.txt', 'subdir1/file4.txt'}, set(fs1.files_changed()))
 
