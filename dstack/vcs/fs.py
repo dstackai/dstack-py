@@ -42,6 +42,9 @@ class FileAttributes(object):
     def absolute_path(self, root: Path) -> Path:
         return FileSystem.absolute_path(root, self.path)
 
+    def __repr__(self) -> str:
+        return self.path
+
 
 class WorkflowStateError(Exception, ABC):
     pass
@@ -59,6 +62,14 @@ class FileSystemIsNotInitializedError(WorkflowStateError):
 class LocalChangesFoundError(WorkflowStateError):
     def __init__(self, conflicts: List[FileAttributes]):
         self.conflicts = conflicts
+
+
+class Query(object):
+    def __init__(self, query: str):
+        self.query = query
+
+    def search(self, df: pd.DataFrame) -> pd.DataFrame:
+        return df.query(self.query)
 
 
 class FileSystemMetadata(object):
@@ -206,9 +217,9 @@ class FileSystemMetadata(object):
 
         meta = self.find(attr.path)
 
-        return meta is not None and meta["hash_code"] != attr.hash_code
+        return meta is None or meta["hash_code"] != attr.hash_code
 
-    def list(self) -> List[FileAttributes]:
+    def list(self, query: Optional[Query] = None) -> List[FileAttributes]:
         def or_none(r, col):
             val = r[col]
             # FIXME: bad solution
@@ -216,7 +227,9 @@ class FileSystemMetadata(object):
 
         result = []
 
-        for index, row in self.df.iterrows():
+        df = query.search(self.df) if query else self.df
+
+        for index, row in df.iterrows():
             result.append(FileAttributes(str(index), or_none(row, "size"), or_none(row, "hash_code"),
                                          or_none(row, "hash_alg"), or_none(row, "frame_id")))
 
@@ -314,11 +327,8 @@ class FileSystem(ContextAwareObject):
 
         for file in metadata.list():
             attr = self.attributes(file.path)
-            if attr:
-                if not new_metadata or new_metadata.is_file_changed(attr):
-                    result.append(attr)
-            else:
-                metadata.remove(file.path)
+            if attr and (not new_metadata or new_metadata.is_file_changed(attr)):
+                result.append(attr)
 
         return result
 
@@ -345,25 +355,26 @@ class FileSystem(ContextAwareObject):
             metadata.commit(attr)
 
     @inject_metadata
-    def pull(self, metadata: Optional[FileSystemMetadata] = None):
+    def pull(self, query: Optional[Query] = None, force: bool = False, metadata: Optional[FileSystemMetadata] = None):
         context = metadata.context
         conflicts = []
 
-        for file in metadata.list():
+        files = metadata.list(query)
+        for file in files:
             attr = self.attributes(file.path)
             if metadata.is_file_changed(attr):
                 conflicts.append(attr)
 
-        if conflicts:
+        if conflicts and not force:
             raise LocalChangesFoundError(conflicts)
 
-        for file in metadata.list():
+        for file in files:
             file_context = context.derive(f"{context.stack}/{file.stack_path()}")
             _pull(file_context, decoder=FileAttributesDecoder(self.root / file.path))
 
     @inject_metadata
-    def list(self, metadata: Optional[FileSystemMetadata] = None) -> List[FileAttributes]:
-        return metadata.list()
+    def list(self, query: Optional[Query] = None, metadata: Optional[FileSystemMetadata] = None) -> List[FileAttributes]:
+        return metadata.list(query=query)
 
     def attributes(self, relative_path: str) -> Optional[FileAttributes]:
         path = self.absolute_path(self.root, relative_path)
@@ -465,4 +476,3 @@ class FileAttributesDecoder(Decoder[FileAttributes]):
         decoder.decode(data)
         return FileAttributes(data.settings["path"], data.settings["size"],
                               data.settings["hash_code"], data.settings["hash_alg"])
-
