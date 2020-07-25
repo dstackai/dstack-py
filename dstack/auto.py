@@ -27,6 +27,7 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
     """A handler which selects appropriate implementation depending on `obj` itself in runtime."""
 
     def __init__(self):
+        super().__init__()
         self.encoders = [
             MatplotlibEncoderFactory(),
             PlotlyEncoderFactory(),
@@ -60,7 +61,9 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
         Raises:
             UnsupportedObjectTypeException: In the case of unknown object type.
         """
-        return self.find_handler(obj, self.encoders).encode(obj, description, params)
+        handler = self.find_handler(obj, self.encoders)
+        handler.set_context(self._context)
+        return handler.encode(obj, description, params)
 
     def decode(self, data: FrameData) -> Any:
         return self.find_handler(data.media_type(), self.decoders).decode(data)

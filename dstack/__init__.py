@@ -6,9 +6,10 @@ from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
     from_yaml_file, ConfigurationException, get_config, Profile
 from dstack.content import StreamContent, BytesContent, MediaType
+from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T
-from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
-from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
+from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
+from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
@@ -17,7 +18,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
                params: Optional[Dict] = None,
                encoder: Optional[Encoder[Any]] = None,
                profile: str = "default",
-               **kwargs) -> str:
+               **kwargs) -> PushResult:
     """Create frame in the stack, commits and pushes data in a single operation.
 
     Args:
@@ -91,19 +92,35 @@ def create_frame(stack: str,
     if access and access not in ["private", "public"]:
         raise ValueError(f"access can be only private, public or None but found {access}")
 
-    profile = get_config().get_profile(profile)
+    context = create_context(stack, profile)
 
-    frame = StackFrame(stack=stack,
-                       user=profile.user,
-                       token=profile.token,
+    return _create_frame(context, access=access, auto_push=auto_push, check_access=check_access)
+
+
+def _create_frame(context: Context, access: Optional[str] = None, auto_push: bool = False,
+                  check_access: bool = True) -> StackFrame:
+    frame = StackFrame(context,
                        access=access,
                        auto_push=auto_push,
-                       protocol=create_protocol(profile),
-                       encryption=get_encryption(profile))
+                       encryption=get_encryption(context.profile))
     if check_access:
         frame.send_access()
 
     return frame
+
+
+def _push(context: Context, obj: Any,
+          description: Optional[str] = None,
+          access: Optional[str] = None,
+          message: Optional[str] = None,
+          params: Optional[Dict] = None,
+          encoder: Optional[Encoder[Any]] = None,
+          **kwargs) -> PushResult:
+    frame = _create_frame(context,
+                          access=access,
+                          check_access=False)
+    frame.commit(obj, description, params, encoder, **kwargs)
+    return frame.push(message)
 
 
 def pull1(stack: str,
@@ -139,19 +156,16 @@ def get_encryption(profile: Profile) -> EncryptionMethod:
     return NoEncryption()
 
 
-def pull_data(stack: str,
-             profile: str = "default",
-             params: Optional[Dict] = None, **kwargs) -> FrameData:
-    profile = get_config().get_profile(profile)
-    protocol = create_protocol(profile)
+def pull_data(context: Context,
+              params: Optional[Dict] = None, **kwargs) -> FrameData:
+    path = context.stack_path()
     params = merge_or_none(params, kwargs)
-    path = stack_path(profile.user, stack)
-    res = protocol.pull(path, profile.token, params)
+    res = context.protocol.pull(path, context.profile.token, params)
     attach = res["attachment"]
 
     data = \
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
-        StreamContent(*protocol.download(attach["download_url"]))
+            StreamContent(*context.protocol.download(attach["download_url"]))
 
     media_type = MediaType(attach["content_type"], attach.get("application", None))
     return FrameData(data, media_type, attach.get("description", None),
@@ -161,7 +175,21 @@ def pull_data(stack: str,
 def pull(stack: str,
          profile: str = "default",
          params: Optional[Dict] = None,
-         decoder: Optional[Decoder[T]] = None,
-         **kwargs) -> T:
-    decoder = decoder if decoder else AutoHandler()
-    return decoder.decode(pull_data(stack, profile, params, **kwargs))
+         decoder: Optional[Decoder[Any]] = None,
+         **kwargs) -> Any:
+    return _pull(create_context(stack, profile), params, decoder, **kwargs)
+
+
+def _pull(context: Context,
+          params: Optional[Dict] = None,
+          decoder: Optional[Decoder[Any]] = None,
+          **kwargs) -> Any:
+    decoder = decoder or AutoHandler()
+    decoder.set_context(context)
+    return decoder.decode(pull_data(context, params, **kwargs))
+
+
+def create_context(stack: str, profile: str = "default") -> Context:
+    profile = get_config().get_profile(profile)
+    protocol = create_protocol(profile)
+    return Context(stack, profile, protocol)

@@ -7,11 +7,11 @@ setup(
     version=__version__,
     author="swordhands",
     author_email="team@dstack.ai",
-    packages=["dstack", "dstack.cli", "dstack.files", "dstack.bokeh", "dstack.matplotlib",
+    packages=["dstack", "dstack.cli", "dstack.files", "dstack.vcs", "dstack.bokeh", "dstack.matplotlib",
               "dstack.pandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow", "dstack.torch"],
     scripts=[],
     entry_points={
-        "console_scripts": ["dstack=dstack.cli.main:main"],
+        "console_scripts": ["dstack=dstack.cli.main:main", "dstack-vcs=dstack.cli.vcs:main"],
     },
     url="https://dstack.ai",
     license="Apache License 2.0",
@@ -20,7 +20,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "pyyaml>=5.1",
-        "requests"
+        "requests",
+        "pandas"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

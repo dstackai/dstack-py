@@ -1,4 +1,3 @@
-import re
 import time
 from abc import ABC, abstractmethod
 from platform import uname
@@ -6,9 +5,8 @@ from sys import version as python_version
 from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
-from dstack import AutoHandler
+from dstack import AutoHandler, Context
 from dstack.handler import FrameData, Encoder
-from dstack.protocol import Protocol
 from dstack.version import __version__ as dstack_version
 
 
@@ -30,21 +28,24 @@ class NoEncryption(EncryptionMethod):
         return {}
 
 
+class PushResult(object):
+    def __init__(self, frame_id: str, url: str):
+        self.id = frame_id
+        self.url = url
+
+    def __repr__(self) -> str:
+        return self.url
+
+
 class StackFrame(object):
     def __init__(self,
-                 stack: str,
-                 user: str,
-                 token: str,
+                 context: Context,
                  access: Optional[str],
                  auto_push: bool,
-                 protocol: Protocol,
                  encryption: EncryptionMethod):
-        self.stack = stack
-        self.user = user
-        self.token = token
         self.access = access
         self.auto_push = auto_push
-        self.protocol = protocol
+        self.context = context
         self.encryption_method = encryption
         self.id = uuid4().__str__()
         self.index = 0
@@ -70,15 +71,17 @@ class StackFrame(object):
             **kwargs: Optional parameters is an alternative to params. If both are present this one will
                 be merged into params.
         """
-        encoder = encoder if encoder else AutoHandler()
+        encoder = encoder or AutoHandler()
+        encoder.set_context(self.context)
         params = merge_or_none(params, kwargs)
         data = encoder.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
+
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self, message: Optional[str] = None) -> str:
+    def push(self, message: Optional[str] = None) -> PushResult:
         """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
@@ -121,14 +124,11 @@ class StackFrame(object):
         return data
 
     def send_access(self):
-        self.protocol.access(self.stack_path(), self.token)
+        self.context.protocol.access(self.context.stack_path(), self.context.profile.token)
 
-    def send_push(self, frame: Dict) -> str:
-        res = self.protocol.push(self.stack_path(), self.token, frame)
-        return res["url"]
-
-    def stack_path(self) -> str:
-        return stack_path(self.user, self.stack)
+    def send_push(self, frame: Dict) -> PushResult:
+        res = self.context.protocol.push(self.context.stack_path(), self.context.profile.token, frame)
+        return PushResult(self.id, res["url"])
 
     @staticmethod
     def settings():
@@ -146,13 +146,6 @@ def filter_none(d):
     if isinstance(d, Dict):
         return {k: filter_none(v) for k, v in d.items() if v is not None}
     return d
-
-
-def stack_path(user: str, stack: str) -> str:
-    if re.match("^[a-zA-Z0-9-_/]{3,255}$", stack):
-        return stack[1:] if stack[0] == "/" else f"{user}/{stack}"
-    else:
-        raise ValueError("Stack name can contain only latin letters, digits, slash and underscore")
 
 
 def merge_or_none(x: Optional[Dict], y: Optional[Dict]) -> Optional[Dict]:

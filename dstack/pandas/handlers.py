@@ -6,8 +6,7 @@ from typing import Optional, Dict, TypeVar, List
 from pandas import __version__ as pandas_version, DataFrame, read_csv, Series
 from pandas.core.generic import NDFrame
 
-from dstack import BytesContent
-from dstack.content import MediaType
+from dstack.content import BytesContent, MediaType
 from dstack.handler import Encoder, Decoder
 from dstack.stack import FrameData
 
@@ -15,6 +14,7 @@ from dstack.stack import FrameData
 class AbstractDataFrameEncoder(Encoder[NDFrame], ABC):
     def __init__(self, encoding: str = "utf-8", header: bool = True,
                  index: bool = True):
+        super().__init__()
         self.encoding = encoding
         self.header = header
         self.index = index

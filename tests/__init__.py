@@ -3,13 +3,13 @@ import unittest
 from typing import Dict, Optional
 
 from dstack.config import Profile, InPlaceConfig, configure
-from dstack.protocol import Protocol, ProtocolFactory, setup_protocol
+from dstack.protocol import Protocol, ProtocolFactory, setup_protocol, StackNotFoundError
 
 
 class TestProtocol(Protocol):
     def __init__(self):
         self.exception = None
-        self.data = None
+        self.data = {}
         self.token = None
 
     def push(self, stack: str, token: str, data: Dict) -> Dict:
@@ -20,7 +20,7 @@ class TestProtocol(Protocol):
         return self.handle({"stack": stack}, token)
 
     def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
-        attachments = self.data["attachments"]
+        attachments = self.get_data(stack)["attachments"]
         for index, attach in enumerate(attachments):
             if (params is None and (len(attachments) == 1 or "params" not in attach)) or \
                     set(attach["params"].items()) == set(params.items()):
@@ -33,8 +33,14 @@ class TestProtocol(Protocol):
     def download(self, url):
         raise NotImplementedError()
 
+    def get_data(self, stack: str) -> Dict:
+        if stack not in self.data:
+            raise StackNotFoundError(stack)
+
+        return self.data[stack]
+
     def handler(self, data: Dict, token: str) -> Dict:
-        self.data = data
+        self.data[data["stack"]] = data
         self.token = token
         stack = data["stack"]
         return {"url": f"https://api.dstack.ai/{stack}"}
@@ -71,3 +77,6 @@ class TestBase(unittest.TestCase):
         configure(config)
         self.protocol = TestProtocol()
         setup_protocol(TestProtocolFactory(self.protocol))
+
+    def get_data(self, stack: str) -> Dict:
+        return self.protocol.get_data(f"user/{stack}")
