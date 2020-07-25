@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from dstack import create_context
-from dstack.vcs.fs import FileSystem, FileSystemMetadata
+from dstack.vcs.fs import FileSystem, FileSystemMetadata, Query
 from tests import TestBase
 
 
@@ -192,6 +192,24 @@ class TestFileSystem(TestBase):
         self.assertEqual(None, attr[0].hash_code)
         self.assertEqual(None, attr[0].hash_alg)
 
+    def test_query_list(self):
+        base = self.absolute_path("mydir")
+        self.create_some_files(base)
+
+        fs = FileSystem(base)
+        context = create_context("mystack")
+        fs.init(context)
+        dot = Path(".")
+        fs.add([dot / "file1.txt"], {"tag1": "1.0", "tag2": "test"})
+        fs.add([dot / "file2.txt"], {"tag1": "2.0", "tag2": "hello"})
+        fs.add([dot / "subdir1"], {"tag1": "2.5", "tag2": "world", "tag3": "True"})
+        res = fs.list(query=Query("tag1 == 2.0"))
+        self.assertEqual(1, len(res))
+        self.assertEqual("file2.txt", res[0].path)
+
+        res = fs.list(query=Query("tag1 > 2 & tag3"))
+        self.assertEqual(2, len(res))
+        self.assertEqual({"subdir1/file3.txt", "subdir1/file4.txt"}, set([file.path for file in res]))
 
     def test_delete_file(self):
         pass

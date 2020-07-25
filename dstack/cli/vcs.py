@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 from dstack import create_context
-from dstack.vcs.fs import FileSystem
+from dstack.vcs.fs import FileSystem, Query
 from dstack.version import __version__ as version
 
 
@@ -15,8 +15,11 @@ def parse_meta(metadata: Optional[List[str]]) -> Optional[Dict[str, str]]:
     result = {}
 
     for meta in metadata:
-        k, v = meta.split("=")
-        result[k] = v
+        if "=" in meta:
+            k, v = meta.split("=")
+            result[k] = v
+        else:
+            result[meta] = "true"
 
     return result
 
@@ -45,7 +48,10 @@ def fetch(args: Namespace):
 
 def pull(args: Namespace):
     fs = FileSystem(Path("."))
-    fs.pull()
+    if args.query:
+        fs.pull(query=Query(args.query), force=args.force)
+    else:
+        fs.pull(force=args.force)
 
 
 def push(args: Namespace):
@@ -94,6 +100,7 @@ def main():
 
     pull_parser = subparsers.add_parser("pull", help="fetch files from server")
     pull_parser.add_argument("--query", help="query to selective fetch")
+    pull_parser.add_argument("--force", help="override files in the case of conflict", action="store_true")
     pull_parser.set_defaults(func=pull)
 
     push_parser = subparsers.add_parser("push", help="push changed files to server")
