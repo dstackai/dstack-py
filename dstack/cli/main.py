@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 
 import dstack.cli.config as config
 import dstack.cli.server as server
+from dstack.cli import vcs
 from dstack.version import __version__ as version
 
 
@@ -13,7 +14,7 @@ def main():
 
     config.register_parsers(subparsers)
     server.register_parsers(subparsers)
-    # vcs.register_parsers(subparsers)
+    vcs.register_parsers(subparsers)
 
     if len(sys.argv) < 2:
         parser.print_help()
