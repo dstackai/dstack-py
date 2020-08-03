@@ -27,6 +27,7 @@ class FileAttributes(object):
         self.frame_id = frame_id
 
     def stack_path(self) -> str:
+        # FIXME: it's not a good way
         hash_md5 = hashlib.md5()
         hash_md5.update(self.path.encode())
         return hash_md5.hexdigest()
@@ -369,6 +370,7 @@ class FileSystem(ContextAwareObject):
             raise LocalChangesFoundError(conflicts)
 
         for file in files:
+            print(f"Pulling {file.path}")
             file_context = context.derive(f"{context.stack}/{file.stack_path()}")
             _pull(file_context, decoder=FileAttributesDecoder(self.root / file.path))
 
