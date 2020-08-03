@@ -29,7 +29,7 @@ class PlotlyEncoder(Encoder[Figure]):
         """Build frame data object from Plotly figure.
 
         Args:
-            obj (plotly.graph_objs._figure.Figure): Plotly figure to publish.
+            obj (plotly.graph_objs._figure.Figure): A plotly figure to publish.
             description: Description of Plotly chart.
             params: Parameters of the chart.
 
