@@ -13,7 +13,6 @@ def main():
 
     config.register_parsers(subparsers)
     server.register_parsers(subparsers)
-    # vcs.register_parsers(subparsers)
 
     if len(sys.argv) < 2:
         parser.print_help()
