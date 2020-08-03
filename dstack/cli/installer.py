@@ -47,7 +47,7 @@ class Installer(object):
         def my_java_factory(java_home: Path) -> Java:
             return Java(java_home)
 
-        config_path = _get_config_path(use_global_settings=True)
+        config_path = _get_config_path()
 
         self.base_path = base_path or config_path.parent
         self._conf = config or from_yaml_file(path=config_path)

@@ -97,7 +97,10 @@ def get_logger():
     return __logger
 
 
-def hide_token(token: str) -> str:
+def hide_token(token: Optional[str]) -> Optional[str]:
+    if not token:
+        return None
+
     n = len(token)
     return f"{'*' * (n - 4)}{token[-4:]}"
 

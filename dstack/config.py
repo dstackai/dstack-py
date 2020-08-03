@@ -7,9 +7,15 @@ import yaml
 API_SERVER = "https://api.dstack.ai"
 
 
-class ConfigurationException(Exception):
-    def __init__(self, message):
+class ConfigurationError(Exception):
+    def __init__(self, message: str):
         self.message = message
+
+
+class ProfileDoesNotExistError(ConfigurationError):
+    def __init__(self, name: str):
+        super().__init__(f"Profile '{name}' does not exist")
+        self.name = name
 
 
 class Profile(object):
@@ -206,8 +212,12 @@ class YamlConfig(DictionaryBasedConfig):
         self.path.write_text(content, encoding="utf-8")
 
     def remove_profile(self, name: str) -> Profile:
-        profiles = self.yaml_data
-        profile = profiles[name]
+        profiles = self.yaml_data.get("profiles", {})
+        profile = profiles.get(name, None)
+
+        if not profile:
+            raise ProfileDoesNotExistError(name)
+
         del profiles[name]
         return profile
 
@@ -256,15 +266,8 @@ class YamlConfigFactory(ConfigFactory):
         return from_yaml_file(_get_config_path(), error_if_not_exist=True)
 
 
-def _get_config_path(use_global_settings: Optional[bool] = None,
-                     base_dir: Optional[str] = None) -> Path:
-    base_dir = base_dir or ".dstack"
-    path = Path(base_dir) / "config.yaml"
-
-    if use_global_settings or (use_global_settings is None and not path.exists()):
-        path = Path.home() / path
-
-    return path
+def _get_config_path(path: Optional[str] = None) -> Path:
+    return path or Path.home() / ".dstack" / "config.yaml"
 
 
 def from_yaml_file(path: Path, error_if_not_exist: bool = False) -> Config:
@@ -282,7 +285,7 @@ def from_yaml_file(path: Path, error_if_not_exist: bool = False) -> Config:
 
     if not path.exists():
         if error_if_not_exist:
-            raise ConfigurationException(f"Configuration file does not exist, type `dstack config` in command line")
+            raise ConfigurationError(f"Configuration file does not exist, type `dstack config` in command line")
         else:
             return YamlConfig({}, path)
 
