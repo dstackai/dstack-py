@@ -15,10 +15,9 @@ from dstack.content import FileContent, MediaType
 class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
     STORE_WHOLE_MODEL: bool = True
 
-    def __init__(self, store_whole_model: Optional[bool] = None,
-                 save_format: str = "tf",
-                 archive: str = "zip",
+    def __init__(self, store_whole_model: Optional[bool] = None, save_format: str = "tf", archive: str = "zip",
                  tmp_dir: Optional[str] = None):
+        super().__init__()
         self.store_whole_model = store_whole_model if store_whole_model else self.STORE_WHOLE_MODEL
         self.tmp_dir = Path(tmp_dir if tmp_dir else gettempdir())
         self.save_format = save_format
@@ -44,7 +43,7 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
             archived = _create_filename(self.tmp_dir)
             filename = shutil.make_archive(archived, self.archive, filename)
 
-        return FrameData(FileContent(filename),
+        return FrameData(FileContent(Path(filename)),
                          MediaType("application/binary", application_type),
                          description, params, settings)
 
@@ -55,6 +54,7 @@ def _create_filename(tmp_dir: str) -> str:
 
 class TensorFlowKerasAbstractDecoder(Decoder[keras.Model], ABC):
     def __init__(self, tmp_dir: Optional[str] = None):
+        super().__init__()
         self.tmp_dir = Path(tmp_dir if tmp_dir else gettempdir())
 
     def save_data(self, data: FrameData) -> str:
