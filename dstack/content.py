@@ -24,6 +24,11 @@ class Content(ABC):
     def base64value(self) -> str:
         return base64.b64encode(self.value()).decode()
 
+    def to_file(self, path: Path):
+        # FIXME: use buf to read/write
+        with path.open("wb") as f:
+            f.write(self.stream().read())
+
 
 class BytesContent(Content):
     def __init__(self, buf: Union[bytes, io.BytesIO]):
@@ -66,15 +71,15 @@ class StreamContent(AbstractStreamContent):
 
 
 class FileContent(AbstractStreamContent):
-    def __init__(self, filename: str):
+    def __init__(self, filename: Path):
         super().__init__()
         self.filename = filename
 
     def length(self) -> int:
-        return Path(self.filename).stat().st_size
+        return self.filename.stat().st_size
 
     def stream(self) -> IO:
-        return open(self.filename, "rb")
+        return self.filename.open("rb")
 
 
 # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
@@ -152,7 +157,8 @@ CONTENT_TYPE_MAP_REVERSED = {
     ".zip": "application/zip",  # ZIP archive
     ".3gp": "video/3gpp",  # 3GPP audio/video container, audio/3gpp if it doesn't contain video
     ".3g2": "video/3gpp2",  # 3GPP2 audio/video container audio/3gpp2 if it doesn't contain video
-    ".7z": "application/x-7z-compressed"
+    ".7z": "application/x-7z-compressed",
+    ".tar.gz": " application/tar+gzip"
 }
 
 

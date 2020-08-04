@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List, TypeVar
 
 from dstack.bokeh import BokehEncoderFactory
 from dstack.files import FileEncoderFactory
+from dstack.geopandas import GeoDataFrameEncoderFactory, GeoDataFrameDecoderFactory
 from dstack.handler import FrameData, Encoder, Decoder, AbstractFactory
 from dstack.matplotlib import MatplotlibEncoderFactory
 from dstack.pandas import DataFrameEncoderFactory, DataFrameDecoderFactory, SeriesDecoderFactory, \
@@ -36,6 +37,7 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
             SklearnModelEncoderFactory(),
             TorchModelEncoderFactory(),
             TensorFlowKerasModelEncoderFactory(),
+            GeoDataFrameEncoderFactory(),
             FileEncoderFactory()]
 
         self.decoders = [
@@ -44,7 +46,8 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
             GeneralCsvDecoderFactory(),
             SklearnModelDecoderFactory(),
             TorchModelDecoderFactory(),
-            TensorFlowKerasModelDecoderFactory()]
+            TensorFlowKerasModelDecoderFactory(),
+            GeoDataFrameDecoderFactory()]
 
     def encode(self, obj: Any, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Create frame data from any known object.
