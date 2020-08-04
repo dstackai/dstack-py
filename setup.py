@@ -8,7 +8,8 @@ setup(
     author="swordhands",
     author_email="team@dstack.ai",
     packages=["dstack", "dstack.cli", "dstack.files", "dstack.vcs", "dstack.bokeh", "dstack.matplotlib",
-              "dstack.pandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow", "dstack.torch"],
+              "dstack.pandas", "dstack.geopandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow",
+              "dstack.torch"],
     scripts=[],
     entry_points={
         "console_scripts": ["dstack=dstack.cli.main:main"],
