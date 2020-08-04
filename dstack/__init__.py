@@ -4,7 +4,7 @@ from typing import Optional, Dict, Union, Any
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
-    from_yaml_file, ConfigurationException, get_config, Profile
+    from_yaml_file, ConfigurationError, get_config, Profile
 from dstack.content import StreamContent, BytesContent, MediaType
 from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T

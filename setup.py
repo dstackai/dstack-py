@@ -11,7 +11,7 @@ setup(
               "dstack.pandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow", "dstack.torch"],
     scripts=[],
     entry_points={
-        "console_scripts": ["dstack=dstack.cli.main:main", "dstack-vcs=dstack.cli.vcs:main"],
+        "console_scripts": ["dstack=dstack.cli.main:main"],
     },
     url="https://dstack.ai",
     license="Apache License 2.0",

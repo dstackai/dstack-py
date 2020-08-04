@@ -1,11 +1,9 @@
-import sys
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 from pathlib import Path
 from typing import List, Dict, Optional
 
 from dstack import create_context
 from dstack.vcs.fs import FileSystem, Query
-from dstack.version import __version__ as version
 
 
 def parse_meta(metadata: Optional[List[str]]) -> Optional[Dict[str, str]]:
@@ -74,9 +72,8 @@ def status(args: Namespace):
         print(f"{state}{attr.path}")
 
 
-def main():
-    parser = ArgumentParser(epilog="Please visit https://docs.dstack.ai for more information")
-    parser.add_argument("--version", action="version", version=f"{version}")
+def register_parsers(main_subparsers):
+    parser = main_subparsers.add_parser("vcs", help="version control system")
     subparsers = parser.add_subparsers()
 
     add_parser = subparsers.add_parser("add", help="add files to index")
@@ -108,10 +105,3 @@ def main():
 
     push_parser = subparsers.add_parser("status", help="show the working tree status")
     push_parser.set_defaults(func=status)
-
-    if len(sys.argv) < 2:
-        parser.print_help()
-        exit(1)
-
-    args = parser.parse_args()
-    args.func(args)
