@@ -17,7 +17,7 @@ class TestGeoPandas(TestBase):
             df, geometry=geopandas.points_from_xy(df.Longitude, df.Latitude))
 
         push_frame("my_first_geo", gdf)
-        self.assertEqual("application/zip", self.get_data("my_first_geo")["attachments"][0]["content_type"])
+        self.assertEqual("application/zip", self.protocol.data["attachments"][0]["content_type"])
 
         gdf1 = pull("my_first_geo")
         self.assertTrue(gdf.equals(gdf1))
