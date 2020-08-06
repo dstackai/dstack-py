@@ -55,7 +55,7 @@ def register_parsers(main_subparsers):
 
     start_parser = subparsers.add_parser("start", help="start server")
     start_parser.add_argument("--port", help="use specific port", type=int, nargs="?")
-    start_parser.add_argument("--home", help="store server data in the specified directory")
+    start_parser.add_argument("--home", help="store server data in the specified directory", type=str, nargs="?")
     add_no_verify(start_parser)
     start_parser.set_defaults(func=start)
 
