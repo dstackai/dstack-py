@@ -1,3 +1,5 @@
+import os
+import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Dict, Union
@@ -263,11 +265,23 @@ class ConfigFactory(ABC):
 class YamlConfigFactory(ConfigFactory):
 
     def get_config(self) -> Config:
-        return from_yaml_file(_get_config_path(), error_if_not_exist=True)
+        return from_yaml_file(_get_config_path(check_local=True), error_if_not_exist=True)
 
 
-def _get_config_path(path: Optional[str] = None) -> Path:
-    return path or Path.home() / ".dstack" / "config.yaml"
+def _local_config_hook(path: Path, check_local: bool = False) -> Path:
+    local = Path(".dstack") / "config.yaml"
+    if check_local and local.exists():
+        print("Warning: a local config has been found, please move it to your home directory", file=sys.stderr)
+        return local
+    else:
+        return path
+
+
+def _get_config_path(path: Optional[str] = None, check_local: bool = False) -> Path:
+    config_path = _local_config_hook(Path.home() / ".dstack" / "config.yaml", check_local)
+    env = os.getenv("DSTACK_CONFIG")
+    env = Path(env) if env else None
+    return path or env or config_path
 
 
 def from_yaml_file(path: Path, error_if_not_exist: bool = False) -> Config:
