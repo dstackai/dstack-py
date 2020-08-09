@@ -271,7 +271,9 @@ class YamlConfigFactory(ConfigFactory):
 def _local_config_hook(path: Path, check_local: bool = False) -> Path:
     local = Path(".dstack") / "config.yaml"
     if check_local and local.exists():
-        print("Warning: a local config has been found, please move it to your home directory", file=sys.stderr)
+        print("Warning! In dstack==0.4.2, the default directory where the '.dstack' folder is stored has moved from "
+              "the current directory to the user home directory. In future versions of dstack, the current directory "
+              "won't be used. Please move your '.dstack' directory to your user home.", file=sys.stderr)
         return local
     else:
         return path
