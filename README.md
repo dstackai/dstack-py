@@ -22,15 +22,27 @@ Configuring **dstack profiles** separately from your code, allows you to make th
 Configuring a **dstack profile** can be done by the following command:
 
 ```bash
-dstack config --token <TOKEN> --user <USER>
+dstack config add --token <TOKEN> --user <USER>
 ```
 or simply
 ```bash
-dstack config
+dstack config add
 ```
-In this case, the **dstack profile** name will be `default`. You can change it by including `--profile <PROFILE NAME>` in your command. This allows you to configure multiple profiles and refer to them from your code by their names.
+In this case, the **dstack profile** name will be `default`. You can change it by using extended syntax of the command:
+ ```bash
+dstack config add <PROFILE_NAME>
+```
 
-By default, the configuration profile is stored locally, i.e. in your working directory: `<WORKING_DIRECTORY>/.dstack/config.yaml`
+This allows you to configure multiple profiles and refer to them from your code by their names.
+
+By default, the configuration profile is stored in your home directory: `$HOME/.dstack/config.yaml`.
+
+---
+**NOTE**
+
+*Before version 0.4.2 config was stored in a working directory. Please, do not forget to move the
+local config into your home directory.*
+---
 
 If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
 
@@ -40,17 +52,15 @@ See [CLI Reference](https://docs.dstack.ai/cli-reference) to more information ab
 From version 0.4 it is possible to use a local version of [dstack](https://github.com/dstackai/dstack) 
 server.
  
-To install it, use the following command:
+To start it, use the following command:
 ```bash
-dstack server --install
+dstack server start
 ```
-This command installs the latest version of the server. If environment variable `JAVA_HOME` is set
+This command installs the latest version (if it's not installed) of the server and starts it. If environment variable `JAVA_HOME` is set
 and version of JDK is compatible with the server, that version will be used. In the case if 
 installer can't find `JAVA_HOME` or JDK version is incompatible with current server version
-it will download a compatible version by itself. To update server use `dstack server --update`. 
+it will download a compatible version by itself. To update server use `dstack server update`. 
 
-After install/update the server can be started by `dstack server --start` (if you try to 
-run this command before `--install`, server will be installed automatically). 
 Follow instructions provided by the server in the terminal.
 
 Use `dstack server --help` for more information.
@@ -134,6 +144,26 @@ df = pull("my_data")
 As in the case of plots you can use parameters for data frames too. You can also use
 data frames and plots in the same frame (with certain parameters). It will work with
 `Series` as well.
+
+## GeoPandas support
+You can also push and pull GeoDataFrame from [GeoPandas](https://geopandas.org/):
+```python
+import geopandas
+import pandas as pd
+
+from dstack import push_frame, pull
+
+df = pd.DataFrame({'City': ['Buenos Aires', 'Brasilia', 'Santiago', 'Bogota', 'Caracas'],
+                   'Country': ['Argentina', 'Brazil', 'Chile', 'Colombia', 'Venezuela'],
+                   'Latitude': [-34.58, -15.78, -33.45, 4.60, 10.48],
+                   'Longitude': [-58.66, -47.91, -70.66, -74.08, -66.86]})
+
+gdf = geopandas.GeoDataFrame(
+    df, geometry=geopandas.points_from_xy(df.Longitude, df.Latitude))
+
+push_frame("my_first_geo", gdf)
+```
+To pull the GeoDataFrame object just call `my_gdf = pull("my_first_geo")`.
 
 ## Pushing and pulling ML models
 It is also possible to store ML models using `push` and `pull`. Right now such popular
