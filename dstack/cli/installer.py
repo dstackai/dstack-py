@@ -18,8 +18,8 @@ class Java(object):
     def __init__(self, java_home: Path):
         self.java_home = java_home
 
-    def path(self) -> Path:
-        return self.java_home / "bin" / self._java()
+    def path(self) -> str:
+        return str(self.java_home / "bin" / self._java())
 
     def version(self) -> str:
         result = subprocess.run([self.path(), "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
