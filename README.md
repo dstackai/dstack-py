@@ -38,10 +38,12 @@ This allows you to configure multiple profiles and refer to them from your code 
 By default, the configuration profile is stored in your home directory: `$HOME/.dstack/config.yaml`.
 
 ---
+
 **NOTE**
 
-*Before version 0.4.2 config was stored in a working directory. Please, do not forget to move the
-local config into your home directory.*
+Before version 0.4.2 config was stored in a working directory. Please, do not forget to move the
+local config into your home directory.
+
 ---
 
 If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
