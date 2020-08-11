@@ -1,7 +1,7 @@
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
 
-from dstack import push_frame, pull
+from dstack import push, pull
 from tests import TestBase
 
 
@@ -19,7 +19,7 @@ class TestSklearn(TestBase):
         std_reg = LinearRegression()
         std_reg.fit(x_train, y_train)
 
-        push_frame("test/sklearn/my_linear_model", std_reg, "My first linear model")
+        push("test/sklearn/my_linear_model", std_reg, "My first linear model")
         my_model: LinearRegression = pull("test/sklearn/my_linear_model")
 
         self.assertEqual(std_reg.coef_, my_model.coef_)

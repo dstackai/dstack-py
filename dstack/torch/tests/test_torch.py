@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from dstack import push_frame, pull
+from dstack import push, pull
 from tests import TestBase
 
 
@@ -64,7 +64,7 @@ class TestTorch(TestBase):
 
         from dstack.torch.handlers import TorchModelEncoder
         TorchModelEncoder.STORE_WHOLE_MODEL = False
-        push_frame("my_torch_model", model, "My first PyTorch model")
+        push("my_torch_model", model, "My first PyTorch model")
         model1 = LinearRegression(input_dim, output_dim)
         from dstack.torch.handlers import TorchModelWeightsDecoder
         my_model: LinearRegression = pull("my_torch_model", decoder=TorchModelWeightsDecoder(model1))

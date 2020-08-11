@@ -1,7 +1,7 @@
 import geopandas
 import pandas as pd
 
-from dstack import push_frame, pull
+from dstack import push, pull
 from tests import TestBase
 
 
@@ -16,7 +16,7 @@ class TestGeoPandas(TestBase):
         gdf = geopandas.GeoDataFrame(
             df, geometry=geopandas.points_from_xy(df.Longitude, df.Latitude))
 
-        push_frame("my_first_geo", gdf)
+        push("my_first_geo", gdf)
         self.assertEqual("application/zip", self.get_data("my_first_geo")["attachments"][0]["content_type"])
 
         gdf1 = pull("my_first_geo")

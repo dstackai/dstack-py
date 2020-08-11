@@ -22,7 +22,7 @@ setup(
     install_requires=[
         "pyyaml>=5.1",
         "requests",
-        "pandas"
+        "deprecation"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

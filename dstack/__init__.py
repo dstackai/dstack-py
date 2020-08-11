@@ -2,6 +2,8 @@ import base64
 from io import StringIO
 from typing import Optional, Dict, Union, Any
 
+from deprecation import deprecated
+
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
     from_yaml_file, ConfigurationError, get_config, Profile
@@ -12,14 +14,14 @@ from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult
 
 
-def push_frame(stack: str, obj, description: Optional[str] = None,
-               access: Optional[str] = None,
-               message: Optional[str] = None,
-               params: Optional[Dict] = None,
-               encoder: Optional[Encoder[Any]] = None,
-               profile: str = "default",
-               **kwargs) -> PushResult:
-    """Create frame in the stack, commits and pushes data in a single operation.
+def push(stack: str, obj, description: Optional[str] = None,
+         access: Optional[str] = None,
+         message: Optional[str] = None,
+         params: Optional[Dict] = None,
+         encoder: Optional[Encoder[Any]] = None,
+         profile: str = "default",
+         **kwargs) -> PushResult:
+    """Create a frame in the stack, commits and pushes data in a single operation.
 
     Args:
         stack: A stack you want to commit and push to.
@@ -37,12 +39,42 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
+
     frame = create_frame(stack=stack,
                          profile=profile,
                          access=access,
                          check_access=False)
     frame.commit(obj, description, params, encoder, **kwargs)
     return frame.push(message)
+
+
+@deprecated(details="Use push instead")
+def push_frame(stack: str, obj, description: Optional[str] = None,
+               access: Optional[str] = None,
+               message: Optional[str] = None,
+               params: Optional[Dict] = None,
+               encoder: Optional[Encoder[Any]] = None,
+               profile: str = "default",
+               **kwargs) -> PushResult:
+    """Create a frame in the stack, commits and pushes data in a single operation.
+
+    Args:
+        stack: A stack you want to commit and push to.
+        obj: Object to commit and push, e.g. plot.
+        description: Optional description of the object.
+        access: Access level for the stack. It may be public, private or None. It is None by default, so it will be
+                default access level in user's settings.
+        message: Push message to describe what's new in this revision.
+        params: Optional parameters.
+        encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
+        profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
+        **kwargs: Optional parameters is an alternative to params. If both are present this one
+            will be merged into params.
+    Raises:
+        ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
+        ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
+    """
+    return push(stack, obj, description, access, message, params, encoder, profile, **kwargs)
 
 
 def create_frame(stack: str,

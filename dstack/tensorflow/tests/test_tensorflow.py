@@ -1,7 +1,7 @@
 import tensorflow as tf
 from sklearn.datasets import load_breast_cancer
 
-from dstack import push_frame, pull
+from dstack import push, pull
 from tests import TestBase
 
 
@@ -45,7 +45,7 @@ class TestTensorFlow(TestBase):
         # Evaluate the model - evaluate() returns loss and accuracy
         print("Train score:", model.evaluate(x_train, y_train))
         print("Test score:", model.evaluate(x_test, y_test))
-        push_frame("my_tf_model", model, "My first TF model")
+        push("my_tf_model", model, "My first TF model")
         model1 = pull("my_tf_model")
         self.assertTrue(isinstance(model1, tf.keras.models.Sequential))
 
