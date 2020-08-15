@@ -68,3 +68,11 @@ class TestYamlConfig(TestCase):
         self.assertEqual("hello", conf.get_property("a.x.c"))
         self.assertEqual("world", conf.get_property("a.y.d"))
 
+    def test_get_float_property_saved_by_java_library(self):
+        content = self.conf_example()
+        content.update({"server": {"version": 0.1}})
+        self.create_yaml_file(self.config_path, content)
+
+        conf = from_yaml_file(self.config_path)
+        self.assertEqual("0.1", conf.get_property("server.version"))
+
