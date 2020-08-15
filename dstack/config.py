@@ -137,7 +137,10 @@ class DictionaryBasedConfig(Config, ABC):
             if not data:
                 return None
 
-        return data
+        # if the file was saved by Java library
+        # values like 0.1 appeared without single quotes
+        # so we have to force it to be a string
+        return str(data)
 
 
 class YamlConfig(DictionaryBasedConfig):
