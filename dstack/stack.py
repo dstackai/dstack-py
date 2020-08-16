@@ -30,6 +30,34 @@ class NoEncryption(EncryptionMethod):
         return {}
 
 
+class PushResult(object):
+    def __init__(self, frame_id: str, url: str):
+        self.id = frame_id
+        self.url = url
+
+    def __repr__(self) -> str:
+        return self.url
+
+    def _repr_javascript_(self):
+        return """ 
+        var url = '%s';
+        var img = document.createElement('img')
+        img.src = 'https://dstack.ai/favicon.ico'
+        img.width = '24'
+        img.height = '24'
+        img.alt = ''
+        img.style = 'float:left; display: inline-block; margin-right: 5px;'
+        element[0].appendChild(img)
+        var a = document.createElement('a');
+        a.style = 'float:clear; display: inline-block; margin-top: 1px'
+        var text = document.createTextNode(url);
+        a.appendChild(text);
+        a.target = '_blank';
+        a.href = url;
+        element[0].appendChild(a);
+""" % self.url
+
+
 class StackFrame(object):
     def __init__(self,
                  stack: str,
@@ -75,10 +103,11 @@ class StackFrame(object):
         data = encoder.encode(obj, description, params)
         encrypted_data = self.encryption_method.encrypt(data)
         self.data.append(encrypted_data)
+
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self, message: Optional[str] = None) -> str:
+    def push(self, message: Optional[str] = None) -> PushResult:
         """Push all commits to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
@@ -123,7 +152,7 @@ class StackFrame(object):
     def send_access(self):
         self.protocol.access(self.stack_path(), self.token)
 
-    def send_push(self, frame: Dict) -> str:
+    def send_push(self, frame: Dict) -> PushResult:
         res = self.protocol.push(self.stack_path(), self.token, frame)
         return res["url"]
 
