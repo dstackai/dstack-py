@@ -8,7 +8,8 @@ setup(
     author="swordhands",
     author_email="team@dstack.ai",
     packages=["dstack", "dstack.cli", "dstack.files", "dstack.bokeh", "dstack.matplotlib",
-              "dstack.pandas", "dstack.geopandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow", "dstack.torch"],
+              "dstack.pandas", "dstack.geopandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow",
+              "dstack.torch"],
     scripts=[],
     entry_points={
         "console_scripts": ["dstack=dstack.cli.main:main"],
@@ -20,7 +21,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "pyyaml>=5.1",
-        "requests"
+        "requests",
+        "tqdm"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

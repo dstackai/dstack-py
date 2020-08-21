@@ -2,7 +2,89 @@ import base64
 import io
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import IO, Union, Optional
+from types import TracebackType
+from typing import IO, Union, Optional, Iterable, Type, AnyStr, Iterator, List
+
+import tqdm
+
+
+class Progress(object):
+    def __init__(self, total: int, desc: Optional[str] = None):
+        self.progress = tqdm.tqdm(total=total, unit="B", unit_scale=True)
+        self.progress.set_description(desc)
+
+    def update(self, n: int):
+        self.progress.update(n)
+
+    def close(self):
+        self.progress.close()
+
+
+class StreamWithProgress(IO):
+    def __init__(self, parent: IO, progress: Progress):
+        self.parent = parent
+        self.progress = progress
+
+    def close(self) -> None:
+        self.parent.close()
+        self.progress.close()
+
+    def fileno(self) -> int:
+        return self.parent.fileno()
+
+    def flush(self) -> None:
+        self.parent.flush()
+
+    def isatty(self) -> bool:
+        return self.parent.isatty()
+
+    def read(self, n: int = ...) -> AnyStr:
+        result = self.parent.read(n)
+        self.progress.update(n)
+        return result
+
+    def readable(self) -> bool:
+        return self.parent.readable()
+
+    def readline(self, limit: int = ...) -> AnyStr:
+        return self.parent.readline(limit)
+
+    def readlines(self, hint: int = ...) -> List[AnyStr]:
+        return self.parent.readlines(hint)
+
+    def seek(self, offset: int, whence: int = ...) -> int:
+        return self.parent.seek(offset, whence)
+
+    def seekable(self) -> bool:
+        return self.parent.seekable()
+
+    def tell(self) -> int:
+        return self.parent.tell()
+
+    def truncate(self, size: Optional[int] = ...) -> int:
+        return self.parent.truncate(size)
+
+    def writable(self) -> bool:
+        return self.parent.writable()
+
+    def write(self, s: AnyStr) -> int:
+        return self.parent.write(s)
+
+    def writelines(self, lines: Iterable[AnyStr]) -> None:
+        return self.parent.writelines(lines)
+
+    def __next__(self) -> AnyStr:
+        return self.parent.__next__()
+
+    def __iter__(self) -> Iterator[AnyStr]:
+        return self.parent.__iter__()
+
+    def __enter__(self) -> IO[AnyStr]:
+        return self.parent.__enter__()
+
+    def __exit__(self, t: Optional[Type[BaseException]], value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> Optional[bool]:
+        return self.parent.__exit__(t, value, traceback)
 
 
 class Content(ABC):
@@ -25,9 +107,20 @@ class Content(ABC):
         return base64.b64encode(self.value()).decode()
 
     def to_file(self, path: Path):
-        # FIXME: use buf to read/write
+        chunk_size = 4096
+        progress = Progress(total=self.length(), desc=f"Downloading {path.name}")
+        in_stream = StreamWithProgress(self.stream(), progress)
         with path.open("wb") as f:
-            f.write(self.stream().read())
+            for chunk in self._generate(in_stream, chunk_size):
+                f.write(chunk)
+
+    @staticmethod
+    def _generate(stream: IO, chunk_size: int):
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
 
 
 class BytesContent(Content):
@@ -130,7 +223,7 @@ CONTENT_TYPE_MAP_REVERSED = {
     ".pdf": "application/pdf",  # Adobe Portable Document Format (PDF)
     ".php": "application/x-httpd-php",  # Hypertext Preprocessor (Personal Home Page)
     ".ppt": "application/vnd.ms-powerpoint",  # Microsoft PowerPoint
-    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation", # Microsoft PowerPoint
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # Microsoft PowerPoint
     ".rar": "application/vnd.rar",  # RAR archive
     ".rtf": "application/rtf",  # Rich Text Format (RTF)
     ".sh": "application/x-sh",  # Bourne shell script
