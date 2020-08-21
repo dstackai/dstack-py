@@ -1,6 +1,5 @@
 import base64
-from io import StringIO
-from typing import Optional, Dict, Union, Any
+from typing import Optional, Dict, Any
 
 from deprecation import deprecated
 
@@ -153,35 +152,6 @@ def _push(context: Context, obj: Any,
                           check_access=False)
     frame.commit(obj, description, params, encoder, **kwargs)
     return frame.push(message)
-
-
-def pull1(stack: str,
-          profile: str = "default",
-          filename: Optional[str] = None,
-          params: Optional[Dict] = None, **kwargs) -> Union[str, StringIO]:
-    """Pull data object from stack frame (head) which matches specified parameters.
-
-    Args:
-        stack: Stack you want to pull from.
-        profile: Profile to use. 'default' will be used if profile is not specified.
-        filename: Filename if you want to store downloaded file on disk.
-        params: Parameters to match. In can be used in the case if parameter has a name with spaces, otherwise use **kwargs instead.
-            If both are used actual parameters to match will be **kwargs merged to params.
-        **kwargs: Parameters to match.
-
-    Returns:
-        StringIO object in the case of small files, URL if file is large.
-
-    Raises:
-        MatchException if there is no object that matches the parameters.
-    """
-    d = pull_data(stack, profile, params, **kwargs)
-    if filename is not None:
-        with open(filename, "wb") as f:
-            f.write(d.data.value())
-        return filename
-    else:
-        return StringIO(d.data.value().decode("utf-8"))
 
 
 def get_encryption(profile: Profile) -> EncryptionMethod:

@@ -22,7 +22,8 @@ setup(
     install_requires=[
         "pyyaml>=5.1",
         "requests",
-        "deprecation"
+        "deprecation",
+        "tqdm"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
