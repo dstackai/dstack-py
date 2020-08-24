@@ -53,7 +53,7 @@ class PushResult(object):
         a.target = '_blank';
         a.href = url;
         element[0].appendChild(a);
-""" % self.url
+        """ % self.url
 
 
 class StackFrame(object):

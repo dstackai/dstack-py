@@ -53,8 +53,9 @@ class JsonProtocol(Protocol):
 
     def push(self, stack: str, token: str, data: Dict) -> Dict:
         data["stack"] = stack
+
         if self.length(data) < self.MAX_SIZE:
-            for attach in data["attachments"]:
+            for attach in data.get("attachments", []):
                 attach["data"] = attach["data"].base64value()
 
             result = self.do_request("/stacks/push", data, token)
@@ -140,17 +141,18 @@ class JsonProtocol(Protocol):
 
         response.raise_for_status()
 
-    def length(self, data: Dict):
+    def length(self, data: Dict) -> int:
         memo = []
         attachments_length = 0
-        for attach in data["attachments"]:
+
+        for attach in data.get("attachments", []):
             d = attach.pop("data")
             attachments_length += d.base64length() + len("data") + 8
             memo.append(d)
 
         length_without_data = len(json.dumps(data).encode(self.ENCODING))
 
-        for index, attach in enumerate(data["attachments"]):
+        for index, attach in enumerate(data.get("attachments", [])):
             attach["data"] = memo[index]
 
         return length_without_data + attachments_length
