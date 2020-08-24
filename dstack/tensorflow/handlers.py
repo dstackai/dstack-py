@@ -44,7 +44,7 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
             filename = shutil.make_archive(archived, self.archive, filename)
 
         return FrameData(FileContent(Path(filename)),
-                         MediaType("application/binary", application_type),
+                         MediaType("application/octet-stream", application_type),
                          description, params, settings)
 
 
