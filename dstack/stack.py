@@ -36,6 +36,25 @@ class PushResult(object):
     def __repr__(self) -> str:
         return self.url
 
+    def _repr_javascript_(self):
+        return """ 
+        var url = '%s';
+        var img = document.createElement('img')
+        img.src = 'https://dstack.ai/favicon.ico'
+        img.width = '24'
+        img.height = '24'
+        img.alt = ''
+        img.style = 'float:left; display: inline-block; margin-right: 5px;'
+        element[0].appendChild(img)
+        var a = document.createElement('a');
+        a.style = 'float:clear; display: inline-block; margin-top: 1px'
+        var text = document.createTextNode(url);
+        a.appendChild(text);
+        a.target = '_blank';
+        a.href = url;
+        element[0].appendChild(a);
+""" % self.url
+
 
 class StackFrame(object):
     def __init__(self,
