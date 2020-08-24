@@ -31,7 +31,7 @@ class TorchModelEncoder(Encoder[Module]):
             application_type = "torch/state"
 
         return FrameData(BytesContent(buf),
-                         MediaType("application/binary", application_type),
+                         MediaType("application/octet-stream", application_type),
                          description, params, settings)
 
 

@@ -35,7 +35,7 @@ class JoblibPersistence(Persistence):
         return joblib.load(stream)
 
     def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn")
+        return MediaType("application/octet-stream", "sklearn")
 
     def storage(self) -> str:
         return "joblib"
@@ -49,7 +49,7 @@ class PicklePersistence(Persistence):
         return pickle.loads(data)
 
     def type(self) -> MediaType:
-        return MediaType("application/binary", "sklearn")
+        return MediaType("application/octet-stream", "sklearn")
 
     def storage(self) -> str:
         return "pickle"
