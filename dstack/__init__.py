@@ -8,7 +8,7 @@ from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
 from dstack.content import StreamContent, BytesContent, MediaType
 from dstack.handler import Encoder, Decoder, T
 from dstack.protocol import Protocol, JsonProtocol, MatchException, create_protocol
-from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData
+from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, stack_path, merge_or_none, FrameData, PushResult
 
 
 def push_frame(stack: str, obj, description: Optional[str] = None,
@@ -17,7 +17,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
                params: Optional[Dict] = None,
                encoder: Optional[Encoder[Any]] = None,
                profile: str = "default",
-               **kwargs) -> str:
+               **kwargs) -> PushResult:
     """Create frame in the stack, commits and pushes data in a single operation.
 
     Args:
