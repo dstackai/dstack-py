@@ -154,7 +154,7 @@ class StackFrame(object):
 
     def send_push(self, frame: Dict) -> PushResult:
         res = self.protocol.push(self.stack_path(), self.token, frame)
-        return res["url"]
+        return PushResult(self.id, res["url"])
 
     def stack_path(self) -> str:
         return stack_path(self.user, self.stack)
