@@ -21,6 +21,9 @@ def start(args: Namespace):
         srv.update()
         java = srv.find_jdk()
         jar = srv.jar_path()
+    else:
+        if not args.skip_update_check and srv.check_for_updates():
+            print("Newer server version is available, type the following command to update: \n\tdstack server update\n")
 
     cmd = [java.path(), "-jar", jar]
 
@@ -56,6 +59,7 @@ def register_parsers(main_subparsers):
     start_parser = subparsers.add_parser("start", help="start server")
     start_parser.add_argument("--port", help="use specific port", type=int, nargs="?")
     start_parser.add_argument("--home", help="store server data in the specified directory", type=str, nargs="?")
+    start_parser.add_argument("--skip", help="skip checking for updates", dest="skip_update_check", action="store_true")
     add_no_verify(start_parser)
     start_parser.set_defaults(func=start)
 
