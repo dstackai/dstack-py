@@ -4,7 +4,7 @@ from sys import version as python_version
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame, push_frame, Context, Profile
+from dstack import create_frame, push_frame, Context, Profile, push, FrameParams
 from tests import TestBase
 
 
@@ -83,6 +83,31 @@ class StackFrameTest(TestBase):
         self.assertEqual("test/project11/good_stack", stack_path("test", "project11/good_stack"))
         self.assertFailed(stack_path, "test", "плохой_стек")
         self.assertFailed(stack_path, "test", "bad stack")
+
+    def test_add(self):
+        stack = "my_stack"
+        frame = create_frame(stack=stack)
+        params = {"my param": 1, "x": 2}
+        frame.add(self.get_figure(), **params)
+        frame.push(FrameParams(message="test", y=10))
+        attachments = self.get_data(stack)["attachments"]
+        self.assertEqual(2, len(attachments[0]["params"]))
+        self.assertEqual(2, attachments[0]["params"]["x"])
+        self.assertEqual(1, attachments[0]["params"]["my param"])
+        ps = self.get_data(stack)["params"]
+        self.assertEqual(2, len(ps))
+        self.assertEqual("test", ps["message"])
+        self.assertEqual(10, ps["y"])
+
+    def test_push_params(self):
+        stack = "test/my_plot"
+        push(stack, self.get_figure(), params={"z": 30}, frame_params=FrameParams(text="hello", x=10, y=20))
+        frame = self.get_data(stack)
+        attachments = frame["attachments"]
+        self.assertEqual(1, len(attachments[0]["params"]))
+        self.assertEqual(30, attachments[0]["params"]["z"])
+        self.assertEqual(3, len(frame["params"]))
+        self.assertEqual({"x": 10, "y": 20, "text": "hello"}, frame["params"])
 
     def test_stack_access(self):
         push_frame("test/my_plot", self.get_figure())

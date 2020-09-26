@@ -5,6 +5,8 @@ from sys import version as python_version
 from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
+from deprecation import deprecated
+
 from dstack import AutoHandler, Context
 from dstack.handler import FrameData, Encoder
 from dstack.version import __version__ as dstack_version
@@ -56,6 +58,11 @@ class PushResult(object):
         """ % self.url
 
 
+class FrameParams(object):
+    def __init__(self, params: Optional[Dict] = None, **kwargs):
+        self.params = merge_or_none(params, kwargs) or {}
+
+
 class StackFrame(object):
     def __init__(self,
                  context: Context,
@@ -71,12 +78,34 @@ class StackFrame(object):
         self.timestamp = int(round(time.time() * 1000))  # milliseconds
         self.data: List[FrameData] = []
 
+    @deprecated(details="Use add instead")
     def commit(self,
                obj: Any,
                description: Optional[str] = None,
                params: Optional[Dict] = None,
                encoder: Optional[Encoder[Any]] = None,
                **kwargs):
+        """Add data to the stack frame.
+
+        Args:
+            obj: A data to commit. Data will be preprocessed by the handler but dependently on auto_push
+                mode will be sent to server or not. If auto_push is False then the data won't be sent.
+                Explicit push call need anyway to process committed data. auto_push is useful only in the
+                case of multiple data objects in the stack frame, e.g. set of plots with settings.
+            description: Description of the data.
+            params: Parameters associated with this data, e.g. plot settings.
+            encoder: Handler to use, by default it is AutoHandler.
+            **kwargs: Optional parameters is an alternative to params. If both are present this one will
+                be merged into params.
+        """
+        self.add(obj, description, params, encoder, **kwargs)
+
+    def add(self,
+            obj: Any,
+            description: Optional[str] = None,
+            params: Optional[Dict] = None,
+            encoder: Optional[Encoder[Any]] = None,
+            **kwargs):
         """Add data to the stack frame.
 
         Args:
@@ -100,18 +129,19 @@ class StackFrame(object):
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self, message: Optional[str] = None) -> PushResult:
-        """Push all commits to server. In the case of auto_push mode it sends only a total number
+    def push(self, frame_params: Optional[FrameParams] = None) -> PushResult:
+        """Push all data to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
         Args:
-            message: Push message to describe what's new in this revision.
+            frame_params: A message associated with this revision.
         Returns:
             Stack URL.
         """
         frame = self.new_frame()
-        if message:
-            frame["message"] = message
+
+        if frame_params:
+            frame["params"] = frame_params.params
 
         if not self.auto_push:
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
