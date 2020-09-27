@@ -89,7 +89,7 @@ class StackFrameTest(TestBase):
         frame = ds.frame(stack=stack)
         params = {"my param": 1, "x": 2}
         frame.add(self.get_figure(), **params)
-        frame.push(ds.FrameParams(message="test", y=10))
+        frame.push(ds.FrameMeta(message="test", y=10))
         attachments = self.get_data(stack)["attachments"]
         self.assertEqual(2, len(attachments[0]["params"]))
         self.assertEqual(2, attachments[0]["params"]["x"])
@@ -101,7 +101,7 @@ class StackFrameTest(TestBase):
 
     def test_push_params(self):
         stack = "test/my_plot"
-        ds.push(stack, self.get_figure(), params={"z": 30}, frame_params=ds.FrameParams(text="hello", x=10, y=20))
+        ds.push(stack, self.get_figure(), params={"z": 30}, meta=ds.FrameMeta(text="hello", x=10, y=20))
         frame = self.get_data(stack)
         attachments = frame["attachments"]
         self.assertEqual(1, len(attachments[0]["params"]))

@@ -10,12 +10,12 @@ from dstack.content import StreamContent, BytesContent, MediaType
 from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
-from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameParams
+from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameMeta
 
 
 def push(stack: str, obj, description: Optional[str] = None,
          access: Optional[str] = None,
-         frame_params: Optional[FrameParams] = None,
+         meta: Optional[FrameMeta] = None,
          params: Optional[Dict] = None,
          encoder: Optional[Encoder[Any]] = None,
          profile: str = "default",
@@ -28,7 +28,7 @@ def push(stack: str, obj, description: Optional[str] = None,
         description: Optional description of the object.
         access: Access level for the stack. It may be public, private or None. It is None by default, so it will be
                 default access level in user's settings.
-        frame_params: Push message to associate some parameters with this revision, e.g. text message.
+        meta: Push message to associate some parameters with this revision, e.g. text message.
         params: Optional parameters.
         encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
@@ -43,7 +43,7 @@ def push(stack: str, obj, description: Optional[str] = None,
               access=access,
               check_access=False)
     f.add(obj, description, params, encoder, **kwargs)
-    return f.push(frame_params)
+    return f.push(meta)
 
 
 @deprecated(details="Use push instead")
@@ -72,7 +72,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
-    return push(stack, obj, description, access, FrameParams(message=message), params, encoder, profile, **kwargs)
+    return push(stack, obj, description, access, FrameMeta(message=message), params, encoder, profile, **kwargs)
 
 
 def frame(stack: str,

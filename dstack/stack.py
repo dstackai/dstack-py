@@ -58,9 +58,9 @@ class PushResult(object):
         """ % self.url
 
 
-class FrameParams(object):
-    def __init__(self, params: Optional[Dict] = None, **kwargs):
-        self.params = merge_or_none(params, kwargs) or {}
+class FrameMeta(object):
+    def __init__(self, data: Optional[Dict] = None, **kwargs):
+        self.data = merge_or_none(data, kwargs) or {}
 
 
 class StackFrame(object):
@@ -129,19 +129,19 @@ class StackFrame(object):
         if self.auto_push:
             self.push_data(encrypted_data)
 
-    def push(self, frame_params: Optional[FrameParams] = None) -> PushResult:
+    def push(self, meta: Optional[FrameMeta] = None) -> PushResult:
         """Push all data to server. In the case of auto_push mode it sends only a total number
         of elements in the frame. So call this method is obligatory to close frame anyway.
 
         Args:
-            frame_params: A message associated with this revision.
+            meta: A message associated with this revision.
         Returns:
             Stack URL.
         """
         frame = self.new_frame()
 
-        if frame_params:
-            frame["params"] = frame_params.params
+        if meta:
+            frame["params"] = meta.data
 
         if not self.auto_push:
             frame["attachments"] = [filter_none(x.__dict__) for x in self.data]
