@@ -4,7 +4,7 @@ from sys import version as python_version
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dstack import create_frame, push_frame, Context, Profile, push, FrameParams
+from dstack import create_frame, push_frame, Context, Profile, push, FrameParams, tab
 from tests import TestBase
 
 
@@ -123,6 +123,13 @@ class StackFrameTest(TestBase):
         push_frame("test/my_plot", self.get_figure())
         self.assertEqual(python_version, self.get_data("test/my_plot")["settings"]["python"])
         self.assertIn("os", self.get_data("test/my_plot")["settings"])
+
+    def test_tab(self):
+        push("test/my_plot", self.get_figure(), my_tab=tab("My brand new tab"))
+        t = self.get_data("test/my_plot")["attachments"][0]["params"]["my_tab"]
+        self.assertIsNotNone(t)
+        self.assertEqual("tab", t["type"])
+        self.assertEqual("My brand new tab", t["title"])
 
     def assertFailed(self, func, *args):
         try:

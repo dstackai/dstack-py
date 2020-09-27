@@ -8,7 +8,7 @@ from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
     from_yaml_file, ConfigurationError, get_config, Profile
 from dstack.content import StreamContent, BytesContent, MediaType
 from dstack.context import Context
-from dstack.handler import Encoder, Decoder, T
+from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameParams
 
@@ -242,3 +242,19 @@ def create_context(stack: str, profile: str = "default") -> Context:
     profile = get_config().get_profile(profile)
     protocol = create_protocol(profile)
     return Context(stack, profile, protocol)
+
+
+def tab(title: Optional[str] = None) -> DecoratedValue:
+    class Tab(DecoratedValue):
+        def __init__(self, title: Optional[str] = None):
+            self.title = title
+
+        def decorate(self) -> Dict[str, Any]:
+            decorated = {"type": "tab"}
+
+            if self.title:
+                decorated["title"] = self.title
+
+            return decorated
+
+    return Tab(title)

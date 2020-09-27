@@ -6,6 +6,12 @@ from dstack.content import Content, MediaType
 from dstack.context import ContextAwareObject
 
 
+class DecoratedValue(ABC):
+    @abstractmethod
+    def decorate(self) -> Dict[str, Any]:
+        pass
+
+
 class FrameData:
     """Represent frame data structure which will be attached to stack frame by `commit` and can be sent by protocol
     implementation, as JSON for example. Every frame can contain many `FrameData` objects, any such object represent
@@ -32,8 +38,14 @@ class FrameData:
         self.content_type = media_type.content_type
         self.application = media_type.application
         self.description = description
-        self.params = params
         self.settings = settings
+
+        if params:
+            for k, v in params.items():
+                if isinstance(v, DecoratedValue):
+                    params[k] = v.decorate()
+
+        self.params = params
 
     def media_type(self) -> MediaType:
         return MediaType(self.content_type, self.application)
