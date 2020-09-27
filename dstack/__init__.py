@@ -38,12 +38,12 @@ def push(stack: str, obj, description: Optional[str] = None,
         ConfigurationException: If something goes wrong with configuration process, config file does not exist an so on.
     """
 
-    frame = create_frame(stack=stack,
-                         profile=profile,
-                         access=access,
-                         check_access=False)
-    frame.add(obj, description, params, encoder, **kwargs)
-    return frame.push(frame_params)
+    f = frame(stack=stack,
+              profile=profile,
+              access=access,
+              check_access=False)
+    f.add(obj, description, params, encoder, **kwargs)
+    return f.push(frame_params)
 
 
 @deprecated(details="Use push instead")
