@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from argparse import Namespace
 
 from dstack.cli.installer import Installer
@@ -30,6 +31,11 @@ def start(args: Namespace):
     if args.home:
         cmd += ["--home", args.home]
 
+    cmd += ["--python", args.python or sys.executable]
+
+    if args.rscript:
+        cmd += ["--rscript", args.rscript]
+
     try:
         subprocess.run([str(x) for x in cmd])
     except KeyboardInterrupt:
@@ -56,6 +62,9 @@ def register_parsers(main_subparsers):
     start_parser = subparsers.add_parser("start", help="start server")
     start_parser.add_argument("--port", help="use specific port", type=int, nargs="?")
     start_parser.add_argument("--home", help="store server data in the specified directory", type=str, nargs="?")
+    start_parser.add_argument("--python", help="path to Python interpreter", type=str, nargs="?")
+    start_parser.add_argument("--rscript", help="path to R interpreter", type=str, nargs="?")
+
     add_no_verify(start_parser)
     start_parser.set_defaults(func=start)
 
