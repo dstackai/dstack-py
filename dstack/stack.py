@@ -47,14 +47,15 @@ class PushResult(object):
         img.height = '24'
         img.alt = ''
         img.style = 'float:left; display: inline-block; margin-right: 5px;'
-        element[0].appendChild(img)
+        element.append(img)
         var a = document.createElement('a');
-        a.style = 'float:clear; display: inline-block; margin-top: 1px'
-        var text = document.createTextNode(url);
+        a.style = 'float:clear; display: inline-block; margin-top: 3px; text-decoration: underline'
+        var text = document.createElement('pre');
+        text.innerHTML = url;
         a.appendChild(text);
         a.target = '_blank';
         a.href = url;
-        element[0].appendChild(a);
+        element.append(a);
         """ % self.url
 
 
