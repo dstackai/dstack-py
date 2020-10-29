@@ -126,7 +126,7 @@ class TestControls(TestCase):
             control.data = [f"{selected} 1", f"{selected} 2"]
 
         cb = ctrl.ComboBox(["Hello", "World"], id="cb")
-        self.assertTrue(isinstance(cb._derive_model(cb.data), ctrl.DefaultListModel))
+        self.assertTrue(isinstance(cb._derive_model(), ctrl.DefaultListModel))
 
         c1 = ctrl.ComboBox(data=update, parents=cb, id="c1")
         controller = ctrl.Controller([c1, cb])
@@ -180,7 +180,7 @@ class TestControls(TestCase):
             c.data = list_cities_from_db_by_code(country)
 
         countries = ctrl.ComboBox(list_countries_from_db, id="countries")
-        self.assertTrue(isinstance(countries._derive_model(countries.data), ctrl.CallableListModel))
+        self.assertTrue(isinstance(countries._derive_model(), ctrl.CallableListModel))
 
         cities = ctrl.ComboBox(data=update_cities, id="cities", parents=countries)
         controller = ctrl.Controller([countries, cities])
