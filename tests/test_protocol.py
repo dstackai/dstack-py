@@ -19,7 +19,7 @@ class TestJsonProtocol(TestCase):
 
     def test_length(self):
         def b64(d):
-            d["data"] = base64.b64encode(d["data"].value()).decode()
+            d["data"] = base64.b64encode(d["data"].data()).decode()
 
         def length(d) -> int:
             x = copy.deepcopy(d)

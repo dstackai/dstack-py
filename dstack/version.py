@@ -1,4 +1,4 @@
-__version__ = "0.5.dev2"
+__version__ = "0.6.dev0"
 
 
 def version_to_int(version: str) -> int:
