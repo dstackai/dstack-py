@@ -235,38 +235,30 @@ class ListModel(ABC, ty.Generic[T]):
         return result
 
 
-class DefaultListModel(ListModel[ty.List[ty.Any]]):
-    def __init__(self):
+class AbstractListModel(ListModel[T], ABC):
+    def __init__(self, title_func: ty.Optional[ty.Callable[[ty.Any], str]] = None):
         self.data: ty.Optional[ty.List[ty.Any]] = None
+        self.title_func = title_func
 
+    def size(self) -> int:
+        return len(self.data)
+
+    def element(self, index: int) -> ty.Any:
+        return self.data[index]
+
+    def title(self, index: int) -> str:
+        item = self.data[index]
+        return self.title_func(item) if self.title_func else str(item)
+
+
+class DefaultListModel(AbstractListModel[ty.List[ty.Any]]):
     def apply(self, data: ty.List[ty.Any]):
         self.data = data
 
-    def size(self) -> int:
-        return len(self.data)
 
-    def element(self, index: int) -> ty.Any:
-        return self.data[index]
-
-    def title(self, index: int) -> str:
-        return str(self.data[index])
-
-
-class CallableListModel(ListModel[ty.Callable[[], ty.List[ty.Any]]]):
-    def __init__(self):
-        self.data: ty.Optional[ty.List[ty.Any]] = None
-
+class CallableListModel(AbstractListModel[ty.Callable[[], ty.List[ty.Any]]]):
     def apply(self, data: ty.Callable[[], ty.List[ty.Any]]):
         self.data = data()
-
-    def size(self) -> int:
-        return len(self.data)
-
-    def element(self, index: int) -> ty.Any:
-        return self.data[index]
-
-    def title(self, index: int) -> str:
-        return str(self.data[index])
 
 
 class ComboBoxView(View):
@@ -288,27 +280,28 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 title: ty.Optional[ty.Callable[[T], str]] = None
                  ):
         update_func, data = _update_func_or_data(data)
         super().__init__(label, id, parents, update_func)
         self.data = data
         self._model = model
         self.selected = selected
+        self.title = title
 
     def is_finite_state(self) -> bool:
         return True
 
-    @staticmethod
-    def _derive_model(data: ty.Any) -> ListModel[ty.Any]:
-        if isinstance(data, list):
-            return DefaultListModel()
-        elif isinstance(data, ty.Callable):
-            return CallableListModel()
+    def _derive_model(self) -> ListModel[ty.Any]:
+        if isinstance(self.data, list):
+            return DefaultListModel(self.title)
+        elif isinstance(self.data, ty.Callable):
+            return CallableListModel(self.title)
         else:
-            raise ValueError(f"Unsupported data type: {type(data)}")
+            raise ValueError(f"Unsupported data type: {type(self.data)}")
 
     def get_model(self) -> ListModel[T]:
-        model = self._model or self._derive_model(self.data)
+        model = self._model or self._derive_model()
         model.apply(self.data)
         return model
 
