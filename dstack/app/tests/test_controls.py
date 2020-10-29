@@ -28,7 +28,7 @@ class TestControls(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", parents=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
         controller = ctrl.Controller([c1, c2])
         views = controller.list()
         self.assertEqual(3, len(views))  # Apply will appear here
@@ -76,7 +76,7 @@ class TestControls(TestCase):
             raise ValueError()
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", parents=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
 
         controller = ctrl.Controller([c1, c2])
 
@@ -103,9 +103,9 @@ class TestControls(TestCase):
             control.data = str(int(ty.cast(ctrl.TextField, parents[0]).data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", parents=c1, data=update_c2)
-        c3 = ctrl.TextField(id="c3", parents=c2, data=update_c3_c4)
-        c4 = ctrl.TextField(id="c4", parents=c2, data=update_c3_c4)
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update_c2)
+        c3 = ctrl.TextField(id="c3", depends=c2, data=update_c3_c4)
+        c4 = ctrl.TextField(id="c4", depends=c2, data=update_c3_c4)
 
         controller = ctrl.Controller([c1, c2, c3, c4])
         views = controller.list()
@@ -128,7 +128,7 @@ class TestControls(TestCase):
         cb = ctrl.ComboBox(["Hello", "World"], id="cb")
         self.assertTrue(isinstance(cb._derive_model(), ctrl.DefaultListModel))
 
-        c1 = ctrl.ComboBox(data=update, parents=cb, id="c1")
+        c1 = ctrl.ComboBox(data=update, depends=cb, id="c1")
         controller = ctrl.Controller([c1, cb])
         views = controller.list()
         v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
@@ -182,7 +182,7 @@ class TestControls(TestCase):
         countries = ctrl.ComboBox(list_countries_from_db, id="countries")
         self.assertTrue(isinstance(countries._derive_model(), ctrl.CallableListModel))
 
-        cities = ctrl.ComboBox(data=update_cities, id="cities", parents=countries)
+        cities = ctrl.ComboBox(data=update_cities, id="cities", depends=countries)
         controller = ctrl.Controller([countries, cities])
         views = controller.list()
         v1 = ty.cast(ctrl.ComboBoxView, self.get_by_id(countries.get_id(), views))

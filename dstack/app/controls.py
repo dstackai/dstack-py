@@ -75,14 +75,14 @@ class Control(ABC, ty.Generic[V]):
     def __init__(self,
                  label: ty.Optional[str],
                  id: ty.Optional[str],
-                 parents: ty.Optional[ty.Union[ty.List['Control'], 'Control']],
+                 depends: ty.Optional[ty.Union[ty.List['Control'], 'Control']],
                  update_func: ty.Optional[ty.Callable[['Control', ty.List['Control']], None]]
                  ):
         self.label = label
         self.enabled = True
 
         self._id = id or str(uuid4())
-        self._parents = parents or []
+        self._parents = depends or []
         self._children = []
         self._update_func = update_func
         self._pending_view: ty.Optional[V] = None
@@ -178,11 +178,11 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
                  data: ty.Union[ty.Optional[str], ty.Callable[[Control, ty.List[Control]], None]] = None,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
-                 parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  validator: ty.Optional[Validator[T]] = None
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, parents, update_func)
+        super().__init__(label, id, depends, update_func)
         self.data = data
         self._validator = validator
         self._validated_value = None
@@ -279,11 +279,11 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
-                 parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  title: ty.Optional[ty.Callable[[T], str]] = None
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, parents, update_func)
+        super().__init__(label, id, depends, update_func)
         self.data = data
         self._model = model
         self.selected = selected
@@ -336,10 +336,10 @@ class Slider(Control[SliderView]):
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
-                 parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, parents, update_func)
+        super().__init__(label, id, depends, update_func)
         self.data = list(data)
         self.selected = selected
 
@@ -373,10 +373,10 @@ class FileUpload(Control[FileUploadView]):
                  is_text: bool = True,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
-                 parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None
                  ):
-        super().__init__(label, id, parents, update_func)
+        super().__init__(label, id, depends, update_func)
         self.is_text = is_text
         self.stream: ty.Optional[ty.IO] = None
 
