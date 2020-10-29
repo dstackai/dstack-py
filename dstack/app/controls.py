@@ -1,5 +1,6 @@
 import typing as ty
 from abc import ABC, abstractmethod
+from inspect import signature
 from uuid import uuid4
 
 
@@ -160,15 +161,27 @@ class TextFieldView(View):
         return {"data": self.data}
 
 
+def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable[[Control, ty.List[Control]], None]],
+                                           ty.Optional[ty.Any]):
+    if isinstance(data, ty.Callable):
+        sig = signature(data)
+        if len(sig.parameters) == 2:
+            return data, None
+        else:
+            return None, data
+    else:
+        return None, data
+
+
 class TextField(Control[TextFieldView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Optional[str] = None,
+                 data: ty.Union[ty.Optional[str], ty.Callable[[Control, ty.List[Control]], None]] = None,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None,
                  validator: ty.Optional[Validator[T]] = None
                  ):
+        update_func, data = _update_func_or_data(data)
         super().__init__(label, id, parents, update_func)
         self.data = data
         self._validator = validator
@@ -269,14 +282,14 @@ class ComboBoxView(View):
 
 class ComboBox(Control[ComboBoxView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Optional[T] = None,
+                 data: ty.Union[T, ty.Callable[[Control, ty.List[Control]], None]],
                  model: ty.Optional[ListModel[T]] = None,
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None
                  ):
+        update_func, data = _update_func_or_data(data)
         super().__init__(label, id, parents, update_func)
         self.data = data
         self._model = model
@@ -326,13 +339,13 @@ class SliderView(View):
 
 class Slider(Control[SliderView]):
     def __init__(self,
-                 data: ty.Iterable[float],
+                 data: ty.Union[ty.Iterable[float], ty.Callable[[Control, ty.List[Control]], None]],
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  parents: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None
                  ):
+        update_func, data = _update_func_or_data(data)
         super().__init__(label, id, parents, update_func)
         self.data = list(data)
         self.selected = selected
