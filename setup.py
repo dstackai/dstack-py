@@ -29,7 +29,8 @@ setup(
         "pyyaml>=5.1",
         "requests",
         "deprecation",
-        "tqdm"
+        "tqdm",
+        "cloudpickle"
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
