@@ -72,12 +72,12 @@ Use `dstack server --help` for more information.
 Once the **dstack profile** is configured, you can publish plots from your Python program or Jupyter notebook. Let's consider the simpliest example, line plot using [matplotlib](https://matplotlib.org/) library, but you can use [bokeh](https://docs.bokeh.org/en/latest/index.html) and [plotly](https://plot.ly) plots instead of matplotlib in the same way: 
 ```python
 import matplotlib.pyplot as plt
-from dstack import push_frame
+import dstack as ds
 
 fig = plt.figure()
 plt.plot([1, 2, 3, 4], [1, 4, 9, 16])
 
-push_frame("simple", fig, "My first plot")
+ds.push("simple", fig, "My first plot")
 ```
 
 ## Publishing interactive plots
@@ -85,7 +85,7 @@ push_frame("simple", fig, "My first plot")
 In some cases, you want to have plots that are interactive and that can change when the user change its parameters. Suppose you want to publish a line plot that depends on the value of the parameter `Coefficient` (slope).
 ```python
 import matplotlib.pyplot as plt
-from dstack import create_frame
+import dstack as ds
 
 def line_plot(a):
     xs = range(0, 21)
@@ -96,27 +96,27 @@ def line_plot(a):
     return fig
 
 
-frame = create_frame("line_plot")
+frame = ds.frame("line_plot")
 coeff = [0.5, 1.0, 1.5, 2.0]
 
 for c in coeff:
-    frame.commit(line_plot(c), f"Line plot with the coefficient of {c}", Coefficient=c)
+    frame.add(line_plot(c), f"Line plot with the coefficient of {c}", Coefficient=c)
 
 frame.push()
 ```
 In case when parameter's name contains space characters, `params` dictionary argument must be used, e.g.:
 ```python
-frame.commit(my_plot, "My plot description", params={"My parameter": 0.02})
+frame.add(my_plot, "My plot description", params={"My parameter": 0.02})
 ```  
 Of course, you can combine two approaches together, it can be especially useful in case of 
 comprehensive frames with multiple parameters. In this case parameters which are passed by named arguments
 will be merged to `params` dictionary. So, the following line
 ```python
-frame.commit(my_plot, "My plot description", params={"My parameter": 0.02}, other=True)
+frame.add(my_plot, "My plot description", params={"My parameter": 0.02}, other=True)
 ```
 produces the same result as this one:
 ```python
-frame.commit(my_plot, "My plot description", params={"My parameter": 0.02, "other": True})
+frame.add(my_plot, "My plot description", params={"My parameter": 0.02, "other": True})
 ```
 You can use `push` with message to add information related 
 to this particular revision: `push("Fix log scale")`. Function `push_frame` can accept message as well.
@@ -128,20 +128,22 @@ It can be done in the same way as in the case of plots by replacing plot to pand
 Here is an example:
 ```python
 import pandas as pd
-from dstack import push_frame
+import dstack as ds
+
 raw_data = {"first_name": ["John", "Donald", "Maryam", "Don", "Andrey"], 
         "last_name": ["Milnor", "Knuth", "Mirzakhani", "Zagier", "Okunkov"], 
         "birth_year": [1931, 1938, 1977, 1951, 1969], 
         "school": ["Princeton", "Stanford", "Stanford", "MPIM", "Princeton"]}
+
 df = pd.DataFrame(raw_data, columns = ["first_name", "last_name", "birth_year", "school"])
-push_frame("my_data", df, "DataFrame example")
+
+ds.push("my_data", df, "DataFrame example")
 ```
 In some cases you not only want to store dataset but retrieve it. You can `pull` data frame
 object from the stack:
 ```python
-import pandas as pd
-from dstack import pull
-df = pull("my_data")
+import dstack as ds
+df = ds.pull("my_data")
 ```
 As in the case of plots you can use parameters for data frames too. You can also use
 data frames and plots in the same frame (with certain parameters). It will work with
@@ -153,7 +155,7 @@ You can also push and pull GeoDataFrame from [GeoPandas](https://geopandas.org/)
 import geopandas
 import pandas as pd
 
-from dstack import push_frame, pull
+import dstack as ds
 
 df = pd.DataFrame({'City': ['Buenos Aires', 'Brasilia', 'Santiago', 'Bogota', 'Caracas'],
                    'Country': ['Argentina', 'Brazil', 'Chile', 'Colombia', 'Venezuela'],
@@ -163,9 +165,9 @@ df = pd.DataFrame({'City': ['Buenos Aires', 'Brasilia', 'Santiago', 'Bogota', 'C
 gdf = geopandas.GeoDataFrame(
     df, geometry=geopandas.points_from_xy(df.Longitude, df.Latitude))
 
-push_frame("my_first_geo", gdf)
+ds.push("my_first_geo", gdf)
 ```
-To pull the GeoDataFrame object just call `my_gdf = pull("my_first_geo")`.
+To pull the GeoDataFrame object just call `my_gdf = ds.pull("my_first_geo")`.
 
 ## Pushing and pulling ML models
 It is also possible to store ML models using `push` and `pull`. Right now such popular
@@ -175,7 +177,7 @@ ML frameworks and libraries like [PyTorch](https://pytorch.org/), [TensorFlow](h
 Suppose you have a PyTorch model, for example linear one:
 ```python
 import torch
-from dstack import push_frame
+import dstack as ds
 from dstack.torch.handlers import TorchModelEncoder
 
 # define a new model
@@ -198,17 +200,17 @@ for epoch in range(100):
 TorchModelEncoder.STORE_WHOLE_MODEL = False
 
 # and finally push the model
-push_frame("my_torch_model", model, "My first PyTorch model")        
+ds.push("my_torch_model", model, "My first PyTorch model")        
 ```  
 We stored only model weights, so to pull it we should provide model
 class to decoder, because `pull` method is not smart enough to guess which
 particular class to use. The following example shows a common pattern how to use
 pull in this case:
 ```python
+import dstack as ds
 from dstack.torch.handlers import TorchModelWeightsDecoder
-from dstack import pull
 
-my_model = pull("my_torch_model", decoder=TorchModelWeightsDecoder(LinearRegression(1, 1)))
+my_model = ds.pull("my_torch_model", decoder=TorchModelWeightsDecoder(LinearRegression(1, 1)))
 ```
 
 In the case of TensorFlow (only version 2 is supported), let's use predefined models to
@@ -216,7 +218,7 @@ show how to deal with them (for custom models technique will be the same as in t
 of PyTorch which is described above).
 
 ```python
-from dstack import push_frame
+import dstack as ds
 import tensorflow as tf
 
 d = 30
@@ -229,20 +231,20 @@ model = tf.keras.models.Sequential([
 # train the model here
 
 # push the model
-push_frame("my_tf_model", model, "My first TF model")
+ds.push("my_tf_model", model, "My first TF model")
 ```
 To pull model you need simply call `pull`, because the model is standard no additional
 information required:
 ```python
-from dstack import pull
+import dstack as ds
 
-model1 = pull("my_tf_model")
+model1 = ds.pull("my_tf_model")
 ```
 
 In the case of scikit-learn all thing as simple as in the TensorFlow case:
 ```python
+import dstack as ds
 from sklearn.linear_model import LinearRegression
-from dstack import push_frame
 
 # train the simple Linear regression
 model = LinearRegression()
@@ -250,7 +252,7 @@ model = LinearRegression()
 # train the model as usual
 
 # push it
-push_frame("my_linear_model", model, "My first linear model")
+ds.push("my_linear_model", model, "My first linear model")
 ```
 To pull the model in this case call `pull("my_linear_model")`.
 
