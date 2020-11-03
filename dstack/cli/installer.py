@@ -11,7 +11,12 @@ from uuid import uuid4
 from dstack import pull_data, create_context
 from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path, configure
 from dstack.handler import FrameData
-from dstack.version import version_to_int
+
+
+def version_to_int(version: str) -> int:
+    parts = [int(x, 10) for x in version.split('.')]
+    parts.reverse()
+    return sum(x * (10 ** i) for i, x in enumerate(parts))
 
 
 class Java(object):

@@ -1,10 +1,16 @@
+from pathlib import Path
+
 from setuptools import setup
 
-from dstack.version import __version__
+
+def get_version():
+    text = (Path("dstack") / "version.py").read_text()
+    return text.split("=")[1].strip()[1:-1]
+
 
 setup(
     name="dstack",
-    version=__version__,
+    version=get_version(),
     author="swordhands",
     author_email="team@dstack.ai",
     packages=["dstack", "dstack.cli", "dstack.files", "dstack.bokeh", "dstack.matplotlib",
