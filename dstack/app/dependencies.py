@@ -1,9 +1,9 @@
 import os
 import shutil
+import typing as ty
 from abc import ABC, abstractmethod
 from pathlib import Path
 from types import ModuleType
-from typing import List, Optional
 
 from pkg_resources import get_distribution
 
@@ -17,15 +17,18 @@ class NoSuchModuleError(ValueError):
 
 
 def _find_project_root(wd: Path) -> Path:
-    return wd.parent if "__init__.py" not in os.listdir(wd.parent) else _find_project_root(wd.parent)
+    if "__init__.py" not in os.listdir(wd):
+        return wd
+    else:
+        return _find_project_root(wd.parent)
 
 
 def _working_directory():
-    def _get_wd() -> Optional[Path]:
+    def _get_wd() -> ty.Optional[Path]:
         f = getattr(globals(), "__file__", None)
         return Path(f).parent if f else None
 
-    def _get_wd_jupyter() -> Optional[Path]:
+    def _get_wd_jupyter() -> ty.Optional[Path]:
         dh = getattr(globals(), "_dh", None)
         return Path(dh[0]) if dh else None
 
@@ -37,10 +40,6 @@ def _working_directory():
 
 def _project_root():
     return _find_project_root(_working_directory())
-
-
-def _is_jupyter() -> bool:
-    return hasattr(globals(), "_dh")
 
 
 class AbstractSource(ABC):
@@ -73,7 +72,7 @@ class WheelFile(AnyFile):
 
 
 class MergeableSource(AbstractSource):
-    def __init__(self, relative: Path, lines: List[str]):
+    def __init__(self, relative: Path, lines: ty.List[str]):
         self.relative = relative
         self.lines = lines
 
@@ -100,7 +99,7 @@ class Requirements(MergeableSource):
 
 class Dependency(ABC):
     @abstractmethod
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         pass
 
 
@@ -108,18 +107,18 @@ class RequirementsDependency(Dependency):
     def __init__(self, file: Path):
         self.file = file
 
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         return [Requirements(self.file)]
 
     def __repr__(self):
-        return f"RequirementsDependency('{self.file}')"
+        return f"{self.__class__.__name__}('{self.file}')"
 
 
 class ModuleDependency(Dependency):
     def __init__(self, module: ModuleType):
         self.module = module
 
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         module_sources = _get_sources_for(self.module.__name__)
 
         if len(module_sources) == 0:
@@ -128,42 +127,42 @@ class ModuleDependency(Dependency):
         return module_sources
 
     def __repr__(self):
-        return f"ModuleDependency('{self.module}')"
+        return f"{self.__class__.__name__}('{self.module}')"
 
 
 class PackageDependency(Dependency):
     def __init__(self, package: str):
         self.package = package
 
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         local_package = _get_sources_for(self.package)
         return local_package if len(local_package) > 0 else [DownloadablePackage(self.package)]
 
     def __repr__(self):
-        return f"PackageDependency('{self.package}')"
+        return f"{self.__class__.__name__}('{self.package}')"
 
 
 class WheelDependency(Dependency):
     def __init__(self, absolute: Path):
         self.absolute = absolute
 
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         return [WheelFile(self.absolute)]
 
 
-def _collect_sources(root: Path, path: Path) -> List[Source]:
+def _collect_sources(root: Path, path: Path) -> ty.List[Source]:
     result = []
     for f in os.listdir(path):
         file = path / Path(f)
         relative_path = file.relative_to(root)
         if file.suffix == ".py":
             result.append(Source(relative_path, file))
-        elif file.is_dir():
+        elif file.is_dir() and not file.name.startswith("."):
             result += _collect_sources(root, file)
     return result
 
 
-def _get_sources_for(prefix: str) -> List[Source]:
+def _get_sources_for(prefix: str) -> ty.List[Source]:
     root = _project_root()
     project = _collect_sources(root, root)
     return [source for source in project if str(source.relative).startswith(prefix.replace(".", "/"))]
@@ -171,42 +170,13 @@ def _get_sources_for(prefix: str) -> List[Source]:
 
 class ProjectDependency(Dependency):
     def __repr__(self):
-        return "ProjectDependency()"
+        return f"{self.__class__.__name__}()"
 
-    def collect(self) -> List[AbstractSource]:
+    def collect(self) -> ty.List[AbstractSource]:
         wd = _working_directory()
         project_root = _find_project_root(wd)
         return _collect_sources(project_root, project_root)
 
 
-def _clear_deps(deps: List[Dependency]) -> List[Dependency]:
-    # Remove modules if project dependency exists
-    # Deduplicate package deps
-    return deps
-
-
 def _specify_package_version_if_needed(package: str) -> str:
     return package if "==" in package else f"{package}=={get_distribution(package).version}"
-
-
-def _stage_deps(deps: List[Dependency], root: Path):
-    # Function stages dependencies in one place on disk
-    # root
-    # |- project
-    #       |- package1
-    #           |- package1.1
-    #               |- module1.py
-    #               |- ...
-    #           |- package1.2
-    #           |- ...
-    #       |- package2
-    #       |- ...
-    # |- wheels
-    #       |- my_wheel_package1.whl
-    #       |- my_wheel_package2.whl
-    # |- requirements.txt
-
-    deps = _clear_deps(deps)
-    for dep in deps:
-        for source in dep.collect():
-            source.stage(root)

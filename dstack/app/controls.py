@@ -76,23 +76,23 @@ class Control(ABC, ty.Generic[V]):
                  label: ty.Optional[str],
                  id: ty.Optional[str],
                  depends: ty.Optional[ty.Union[ty.List['Control'], 'Control']],
-                 update_func: ty.Optional[ty.Callable[['Control', ty.List['Control']], None]]
+                 update_func: ty.Optional[ty.Callable[['Control', ty.List['Control']], None]],
+                 require_apply: bool,
+                 optional: ty.Optional[bool]
                  ):
         self.label = label
         self.enabled = True
 
         self._id = id or str(uuid4())
         self._parents = depends or []
-        self._children = []
         self._update_func = update_func
+        self._require_apply = require_apply
+        self.optional = optional
         self._pending_view: ty.Optional[V] = None
         self._dirty = True
 
         if not isinstance(self._parents, list):
             self._parents = [self._parents]
-
-        for p in self._parents:
-            p._children.append(self)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(id={self._id})"
@@ -120,9 +120,8 @@ class Control(ABC, ty.Generic[V]):
     def is_dependent(self) -> bool:
         return len(self._parents) > 0
 
-    @abstractmethod
-    def is_finite_state(self) -> bool:
-        pass
+    def is_apply_required(self) -> bool:
+        return self.is_dependent() or self._require_apply
 
     def view(self) -> V:
         self._update()
@@ -179,19 +178,18 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 validator: ty.Optional[Validator[T]] = None
+                 validator: ty.Optional[Validator[T]] = None,
+                 require_apply: bool = True,
+                 optional: ty.Optional[bool] = None
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func)
+        super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
         self._validator = validator
         self._validated_value = None
 
         if self._validator:
             self._validator.bind(self)
-
-    def is_finite_state(self) -> bool:
-        return False
 
     def _view(self) -> TextFieldView:
         return TextFieldView(self._id, self.enabled, self.label, self.data)
@@ -280,17 +278,15 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 title: ty.Optional[ty.Callable[[T], str]] = None
+                 title: ty.Optional[ty.Callable[[T], str]] = None,
+                 optional: ty.Optional[bool] = None
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func)
+        super().__init__(label, id, depends, update_func, False, optional)
         self.data = data
         self._model = model
         self.selected = selected
         self.title = title
-
-    def is_finite_state(self) -> bool:
-        return True
 
     def _derive_model(self) -> ListModel[ty.Any]:
         if isinstance(self.data, list):
@@ -339,12 +335,9 @@ class Slider(Control[SliderView]):
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func)
+        super().__init__(label, id, depends, update_func, False, False)
         self.data = list(data)
         self.selected = selected
-
-    def is_finite_state(self) -> bool:
-        return True
 
     def _view(self) -> SliderView:
         return SliderView(self.get_id(), self.enabled, self.label, self.selected, self.data)
@@ -374,14 +367,12 @@ class FileUpload(Control[FileUploadView]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None
+                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None,
+                 optional: ty.Optional = None
                  ):
-        super().__init__(label, id, depends, update_func)
+        super().__init__(label, id, depends, update_func, True, optional)
         self.is_text = is_text
         self.stream: ty.Optional[ty.IO] = None
-
-    def is_finite_state(self) -> bool:
-        return False
 
     def _view(self) -> FileUploadView:
         return FileUploadView(self.get_id(), self.enabled, self.label, self.is_text, None)
@@ -403,11 +394,8 @@ class ApplyView(View):
 
 class Apply(Control[ApplyView]):
     def __init__(self, label: ty.Optional[str] = None, id: ty.Optional[str] = None):
-        super().__init__(label, id, None, None)
+        super().__init__(label, id, None, None, False, False)
         self.controller: ty.Optional[Controller] = None
-
-    def is_finite_state(self) -> bool:
-        return True
 
     def _view(self) -> ApplyView:
         enabled = True
@@ -435,8 +423,7 @@ class Controller(object):
         has_apply = False
 
         for control in controls:
-            if control.is_dependent() or not control.is_finite_state():
-                require_apply = True
+            require_apply = control.is_apply_required()
 
             if isinstance(control, Apply):
                 if not has_apply:
@@ -452,6 +439,8 @@ class Controller(object):
             apply.controller = self
             self.map[apply.get_id()] = apply
 
+        self._ids = [x.get_id() for x in controls]
+
     def list(self, views: ty.Optional[ty.List[View]] = None) -> ty.List[View]:
         views = views or []
 
@@ -459,3 +448,18 @@ class Controller(object):
             self.map[view.id].apply(view)
 
         return [c.view() for c in self.map.values()]
+
+    def apply(self, func: ty.Callable, views: ty.List[View]) -> ty.Any:
+        for view in views:
+            self.map[view.id].apply(view)
+
+        values = [self.map[c_id].value() for c_id in self._ids]
+
+        return func(*values)
+
+
+def update(func) -> ty.Callable[[Control, ty.List[Control]], None]:
+    def wrapper(control: Control, depends: ty.List[Control]):
+        func(control, *depends)
+
+    return wrapper

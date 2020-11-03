@@ -13,7 +13,7 @@ setup(
     version=get_version(),
     author="swordhands",
     author_email="team@dstack.ai",
-    packages=["dstack", "dstack.cli", "dstack.files", "dstack.bokeh", "dstack.matplotlib",
+    packages=["dstack", "dstack.app", "dstack.cli", "dstack.files", "dstack.bokeh", "dstack.matplotlib",
               "dstack.pandas", "dstack.geopandas", "dstack.plotly", "dstack.sklearn", "dstack.tensorflow",
               "dstack.torch"],
     scripts=[],
