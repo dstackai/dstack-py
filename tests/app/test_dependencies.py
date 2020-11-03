@@ -4,9 +4,8 @@ from pathlib import Path
 from tempfile import gettempdir
 from unittest import TestCase
 
-from dstack.app import _get_deps, _undress
-from dstack.app.dependencies import _stage_deps
-from dstack.app.tests.test_package.mymodule import test_app
+from dstack.app.handlers import _undress, _get_deps, _stage_deps
+from tests.app.test_package.mymodule import test_app
 
 
 class TestDependencies(TestCase):

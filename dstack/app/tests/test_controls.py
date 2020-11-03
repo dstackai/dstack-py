@@ -2,6 +2,7 @@ import typing as ty
 from unittest import TestCase
 
 import dstack.app.controls as ctrl
+from dstack.app import depends
 from dstack.app.validators import int_validator
 
 
@@ -200,7 +201,7 @@ class TestControls(TestCase):
         self.assertEqual(1, v1.selected)
         self.assertEqual(["Munich", "Berlin", "Hamburg"], v2.titles)
 
-    def test_apply(self):
+    def test_apply_button_enabled(self):
         c1 = ctrl.TextField(None, id="c1")
         controller = ctrl.Controller([c1])
         self.assertEqual(2, len(controller.list()))
@@ -211,3 +212,20 @@ class TestControls(TestCase):
         c1.apply(ctrl.TextFieldView(c1.get_id(), True, None, "10"))
         apply_view = self.get_apply(controller.list())
         self.assertTrue(apply_view.enabled)
+
+    def test_controller_apply(self):
+        @ctrl.update
+        def update(control, text_field):
+            control.data = str(int(text_field.data) * 2)
+
+        @depends(project=True)
+        def test(x: int, y: int):
+            return x + y
+
+        c1 = ctrl.TextField("10", id="c1", validator=int_validator())
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
+        controller = ctrl.Controller([c1, c2])
+        views = controller.list()
+        print(views)
+        self.assertEqual(30, controller.apply(test, views))
+

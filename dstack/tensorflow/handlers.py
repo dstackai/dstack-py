@@ -3,11 +3,11 @@ from abc import ABC
 from pathlib import Path
 from tempfile import gettempdir
 from typing import Optional, Dict
-from uuid import uuid4
 
 import tensorflow as tf
 from tensorflow import keras
 
+import dstack.util as util
 from dstack import FrameData, Encoder, Decoder
 from dstack.content import FileContent, MediaType
 
@@ -24,7 +24,7 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
         self.archive = archive
 
     def encode(self, obj: keras.Model, description: Optional[str], params: Optional[Dict]) -> FrameData:
-        filename = _create_filename(self.tmp_dir)
+        filename = util.create_filename(self.tmp_dir)
 
         if self.store_whole_model:
             obj.save(filename, save_format=self.save_format)
@@ -40,16 +40,12 @@ class TensorFlowKerasModelEncoder(Encoder[keras.Model]):
         }
 
         if self.save_format == "tf":
-            archived = _create_filename(self.tmp_dir)
+            archived = util.create_filename(self.tmp_dir)
             filename = shutil.make_archive(archived, self.archive, filename)
 
         return FrameData(FileContent(Path(filename)),
                          MediaType("application/octet-stream", application_type),
                          description, params, settings)
-
-
-def _create_filename(tmp_dir: str) -> str:
-    return str(tmp_dir / Path(str(uuid4())))
 
 
 class TensorFlowKerasAbstractDecoder(Decoder[keras.Model], ABC):
@@ -58,15 +54,16 @@ class TensorFlowKerasAbstractDecoder(Decoder[keras.Model], ABC):
         self.tmp_dir = Path(tmp_dir if tmp_dir else gettempdir())
 
     def save_data(self, data: FrameData) -> str:
-        filename = _create_filename(self.tmp_dir)
+        filename = util.create_filename(self.tmp_dir)
 
-        with open(filename, "wb") as f:
-            f.write(data.data.stream().read())
+        with data.data.stream() as stream:
+            with open(filename, "wb") as f:
+                f.write(stream.read())
 
         storage_format = data.settings["storage_format"]
 
         if storage_format != "h5":
-            unpacked = _create_filename(self.tmp_dir)
+            unpacked = util.create_filename(self.tmp_dir)
             shutil.unpack_archive(filename, extract_dir=unpacked, format=storage_format)
             filename = unpacked
 
