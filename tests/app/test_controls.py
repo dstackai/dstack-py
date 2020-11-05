@@ -226,6 +226,20 @@ class TestControls(TestCase):
         c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
         controller = ctrl.Controller([c1, c2])
         views = controller.list()
-        print(views)
+        # print(views)
         self.assertEqual(30, controller.apply(test, views))
 
+    def test_title_override(self):
+        class Item:
+            def __init__(self, id, title):
+                self.id = id
+                self.title = title
+
+            def __repr__(self):
+                return self.title
+
+        items = ctrl.ComboBox([Item(1, "hello"), Item(2, "world")], title=lambda x: x.title.upper())
+        controller = ctrl.Controller([items])
+        views = controller.list()
+        items_view = ty.cast(ctrl.ComboBoxView, views[0])
+        self.assertEqual(["HELLO", "WORLD"], items_view.titles)
