@@ -35,7 +35,8 @@ class TestApp(TestCase):
         def run_script(self, cmd: ty.List[str], working_directory: Path) -> str:
             os.chdir(working_directory)
             python = self.path / "bin" / "python"
-            result = subprocess.run([str(python)] + cmd, cwd=working_directory, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run([str(python)] + cmd, cwd=working_directory, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
             return result.stdout.decode()
 
         def pip_install(self, path: Path):
@@ -67,6 +68,10 @@ class TestApp(TestCase):
             "y": c2
         })
 
+        function_settings = frame_data.settings["function"]
+        self.assertEqual("source", function_settings["type"])
+        self.assertEqual(test_app.__name__, function_settings["data"])
+
         base_dir = gettempdir() / Path("stage_simple")
         app_dir = self._save_data(frame_data, filename=base_dir / "app")
 
@@ -74,7 +79,7 @@ class TestApp(TestCase):
         env.install_dstack()
         env.pip_install(app_dir / "requirements.txt")
 
-        test_script = """
+        test_script = f"""
         from tests.app.test_package.mymodule import test_app
         from inspect import signature
         
@@ -89,7 +94,7 @@ class TestApp(TestCase):
             controller = cloudpickle.load(f)
 
         views = controller.list()
-        controller.apply(test_app, views)
+        controller.apply({function_settings["data"]}, views)
         """
         test_file = Path(app_dir) / "test_script.py"
         test_file.write_text(dedent(test_script).lstrip())
@@ -120,20 +125,26 @@ class TestApp(TestCase):
             "y": c2
         })
 
+        function_settings = frame_data.settings["function"]
+        self.assertEqual("pickle", function_settings["type"])
+
         base_dir = gettempdir() / Path("stage_jupyter_like")
         app_dir = self._save_data(frame_data, filename=base_dir / "app")
 
         env = self.Env(base_dir / "venv")
         env.install_dstack()
 
-        test_script = """
+        pickled_function_path = Path(app_dir) / function_settings["data"]
+        self.assertTrue(pickled_function_path.exists())
+
+        test_script = f"""
         from inspect import signature
         import cloudpickle
     
         with open("controller.pickle", "rb") as f:
             controller = cloudpickle.load(f)
 
-        with open("function.pickle", "rb") as f:
+        with open("{pickled_function_path.name}", "rb") as f:
             func = cloudpickle.load(f)
             
         views = controller.list()
@@ -170,4 +181,3 @@ class TestApp(TestCase):
         shutil.unpack_archive(archived, extract_dir=str(filename), format=archive)
 
         return filename
-
