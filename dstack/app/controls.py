@@ -50,13 +50,15 @@ class FunctionalValidator(Validator):
 
 
 class View(ABC):
-    def __init__(self, id: str, enabled: bool, label: ty.Optional[str]):
+    def __init__(self, id: str, enabled: bool, label: ty.Optional[str], optional: ty.Optional[bool]):
         self.id = id
         self.enabled = enabled
         self.label = label
+        self.optional = optional or False
 
     def pack(self) -> ty.Dict:
-        result = {"id": self.id, "enabled": self.enabled, "label": self.label, "type": self.__class__.__name__}
+        result = {"id": self.id, "enabled": self.enabled, "label": self.label,
+                  "optional": self.optional, "type": self.__class__.__name__}
         result.update(self._pack())
         return result
 
@@ -152,8 +154,9 @@ class Control(ABC, ty.Generic[V]):
 
 
 class TextFieldView(View):
-    def __init__(self, id: str, enabled: bool, label: ty.Optional[str], data: ty.Optional[str]):
-        super().__init__(id, enabled, label)
+    def __init__(self, id: str, enabled: bool, label: ty.Optional[str],
+                 optional: ty.Optional[bool], data: ty.Optional[str]):
+        super().__init__(id, enabled, label, optional)
         self.data = data
 
     def _pack(self) -> ty.Dict:
@@ -192,7 +195,7 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
             self._validator.bind(self)
 
     def _view(self) -> TextFieldView:
-        return TextFieldView(self._id, self.enabled, self.label, self.data)
+        return TextFieldView(self._id, self.enabled, self.label, self.optional, self.data)
 
     def _apply(self, view: TextFieldView):
         assert isinstance(view, TextFieldView)
@@ -260,9 +263,9 @@ class CallableListModel(AbstractListModel[ty.Callable[[], ty.List[ty.Any]]]):
 
 
 class ComboBoxView(View):
-    def __init__(self, id: str, enabled: bool, label: ty.Optional[str],
+    def __init__(self, id: str, enabled: bool, label: ty.Optional[str], optional: ty.Optional[bool],
                  selected: int, titles: ty.Optional[ty.List[str]] = None):
-        super().__init__(id, enabled, label)
+        super().__init__(id, enabled, label, optional)
         self.titles = titles
         self.selected = selected
 
@@ -303,7 +306,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
 
     def _view(self) -> ComboBoxView:
         model = self.get_model()
-        return ComboBoxView(self._id, self.enabled, self.label, self.selected, model.titles())
+        return ComboBoxView(self._id, self.enabled, self.label, self.optional, self.selected, model.titles())
 
     def _apply(self, view: ComboBoxView):
         assert isinstance(view, ComboBoxView)
@@ -318,7 +321,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
 class SliderView(View):
     def __init__(self, id: str, enabled: bool, label: ty.Optional[str],
                  selected: int = 0, data: ty.Optional[ty.List[float]] = None):
-        super().__init__(id, enabled, label)
+        super().__init__(id, enabled, label, False)
         self.data = data
         self.selected = selected
 
@@ -352,8 +355,9 @@ class Slider(Control[SliderView]):
 
 
 class FileUploadView(View):
-    def __init__(self, id: str, enabled: bool, label: ty.Optional[str], is_text: bool, stream: ty.Optional[ty.IO]):
-        super().__init__(id, enabled, label)
+    def __init__(self, id: str, enabled: bool, label: ty.Optional[str], optional: ty.Optional[bool],
+                 is_text: bool, stream: ty.Optional[ty.IO]):
+        super().__init__(id, enabled, label, optional)
         self.is_text = is_text
         self.stream = stream
 
@@ -375,7 +379,7 @@ class FileUpload(Control[FileUploadView]):
         self.stream: ty.Optional[ty.IO] = None
 
     def _view(self) -> FileUploadView:
-        return FileUploadView(self.get_id(), self.enabled, self.label, self.is_text, None)
+        return FileUploadView(self.get_id(), self.enabled, self.label, self.optional, self.is_text, None)
 
     def _apply(self, view: FileUploadView):
         assert isinstance(view, FileUploadView)
@@ -401,11 +405,11 @@ class Apply(Control[ApplyView]):
         enabled = True
 
         for control in self.controller.map.values():
-            if control._id != self.get_id() and control.value() is None:
+            if control._id != self.get_id() and (not control.optional and control.value() is None):
                 enabled = False
                 break
 
-        return ApplyView(self.get_id(), enabled, self.label)
+        return ApplyView(self.get_id(), enabled, self.label, False)
 
     def _apply(self, view: ApplyView):
         assert isinstance(view, ApplyView)

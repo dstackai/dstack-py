@@ -243,3 +243,46 @@ class TestControls(TestCase):
         views = controller.list()
         items_view = ty.cast(ctrl.ComboBoxView, views[0])
         self.assertEqual(["HELLO", "WORLD"], items_view.titles)
+
+    def test_optional(self):
+        c1 = ctrl.TextField(None, id="c1", optional=True)
+        controller = ctrl.Controller([c1])
+        self.assertEqual(2, len(controller.list()))
+        apply_view = self.get_apply(controller.list())
+        c1_view = self.get_by_id("c1", controller.list())
+        self.assertIsNotNone(apply_view)
+        self.assertTrue(apply_view.enabled)
+        self.assertFalse(apply_view.optional)
+        self.assertTrue(c1_view.optional)
+
+    def test_pack(self):
+        c1 = ctrl.TextField(None, id="c1", label="my text", optional=True)
+        v1 = c1.view()
+        p1 = v1.pack()
+
+        self.assertEqual("c1", p1["id"])
+        self.assertEqual(None, p1["data"])
+        self.assertTrue(p1["enabled"])
+        self.assertTrue(p1["optional"])
+        self.assertEqual("my text", p1["label"])
+        self.assertEqual(v1.__class__.__name__, p1["type"])
+
+        c2 = ctrl.TextField("10", id="c1")
+        p2 = c2.view().pack()
+        self.assertFalse(p2["optional"])
+        self.assertEqual("10", p2["data"])
+
+        c3 = ctrl.ComboBox(["Hello", "World"], id="c3")
+        p3 = c3.view().pack()
+        self.assertEqual(0, p3["selected"])
+        self.assertFalse(p3["optional"])
+        self.assertEqual(["Hello", "World"], p3["titles"])
+
+        c4 = ctrl.FileUpload(is_text=True, id="c4")
+        p4 = c4.view().pack()
+        self.assertTrue(p4["is_text"])
+
+        c5 = ctrl.Slider(range(0, 10), id="c5", selected=3)
+        p5 = c5.view().pack()
+        self.assertEqual(list(range(0, 10)), p5["data"])
+        self.assertEqual(3, p5["selected"])
