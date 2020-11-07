@@ -10,8 +10,9 @@ import cloudpickle
 
 import dstack.util as util
 from dstack import Encoder, FrameData, DecoratedValue
-from dstack.app.controls import Control, Controller
+from dstack.app.controls import Control, Controller, TextField
 from dstack.app.dependencies import Dependency, ModuleDependency
+from dstack.app.validators import int_validator, float_validator
 from dstack.content import FileContent, MediaType
 
 
@@ -25,12 +26,12 @@ class ControlWrapper(DecoratedValue):
 
 class AppEncoder(Encoder[ty.Callable]):
     def __init__(self, temp_dir: ty.Optional[str] = None, archive: str = "zip",
-                 force_serialization: bool = False, error_if_not_match_signature: bool = True):
+                 force_serialization: bool = False, _strict_type_check: bool = True):
         super().__init__()
         self._temp_dir = Path(temp_dir or gettempdir())
         self._archive = archive
         self._force_serialization = force_serialization
-        self._error_if_not_match_signature = error_if_not_match_signature
+        self._strict_type_check = _strict_type_check
         self._copy_controls = True
 
     def encode(self, obj, description: ty.Optional[str], params: ty.Optional[ty.Dict]) -> FrameData:
@@ -60,18 +61,17 @@ class AppEncoder(Encoder[ty.Callable]):
         for p in sig.parameters.values():
             if p.name in keys:
                 if sig.parameters[p.name].annotation != inspect.Parameter.empty:
-                    (is_optional, tpe) = _is_optional(str(p.annotation))
+                    (is_optional, tpe) = _split_type(str(p.annotation))
                     value = params[p.name]
+
                     if isinstance(value, Control):
                         if self._copy_controls:
                             value = copy.copy(value)
 
-                        if value.optional is None:
-                            value.optional = is_optional
-                        else:
-                            # if param in the function is optional, and the control is not but not vice versa
-                            if is_optional < value.optional and self._error_if_not_match_signature:
-                                raise ValueError(f"Parameter '{p.name}' is not optional but the control {value} is")
+                        self._check_optional(is_optional, p.name, value)
+
+                    if isinstance(value, TextField):
+                        self._check_type(p.name, tpe, value)
 
                         controls.append(value)
                         params[p.name] = ControlWrapper(value)
@@ -113,15 +113,42 @@ class AppEncoder(Encoder[ty.Callable]):
                          MediaType("application/octet-stream", "application/python"),
                          description, params, settings)
 
+    def _check_type(self, name: str, tpe: str, value: TextField):
+        validator = value.validator
+        if validator is None:
+            if tpe == "int":
+                value.validator = int_validator()
+            elif tpe == "float":
+                value.validator = float_validator()
+        elif (tpe == "float" and validator.type() not in ["int", "float"]) \
+                or tpe != validator.type():
+            if self._strict_type_check:
+                raise ValueError(f"Type of '{name}' is not matched to the control's validator: "
+                                 f"required {tpe} but found {validator.type()}")
+
+    def _check_optional(self, is_optional: bool, name, value: Control):
+        if value.optional is None:
+            value.optional = is_optional
+        else:
+            # if param in the function is optional, and the control is not but not vice versa
+            if is_optional < value.optional:
+                if self._strict_type_check:
+                    raise ValueError(f"Parameter '{name}' is not optional but the control {value} is")
+
 
 def _serialize(obj: ty.Any, path: Path):
     with path.open(mode="wb") as f:
         cloudpickle.dump(obj, f)
 
 
-def _is_optional(tpe: str) -> (bool, ty.Optional[str]):
+def _split_type(tpe: str) -> (bool, ty.Optional[str]):
     result = re.search(r"typing.Union\[(.+), NoneType]", tpe)
-    return (True, result.group(1)) if result else (False, None)
+    return (True, result.group(1)) if result else (False, _type(tpe))
+
+
+def _type(tpe: str) -> str:
+    result = re.search(r"<class '(.+)'", tpe)
+    return result.group(1) if result else tpe
 
 
 def _get_deps(func: ty.Callable) -> ty.List[Dependency]:

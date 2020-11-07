@@ -36,17 +36,25 @@ class Validator(ABC, ty.Generic[T]):
     def validate(self, value: str) -> T:
         pass
 
+    @abstractmethod
+    def type(self) -> str:
+        pass
+
 
 class FunctionalValidator(Validator):
-    def __init__(self, func: ty.Callable[[str], T]):
+    def __init__(self, func: ty.Callable[[str], T], tpe: str):
         super().__init__()
         self._func = func
+        self._tpe = tpe
 
     def validate(self, value: str) -> T:
         try:
             return self._func(value)
         except Exception as cause:
             raise ValidationError(cause, self._id)
+
+    def type(self) -> str:
+        return self._tpe
 
 
 class View(ABC):
@@ -188,11 +196,11 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         update_func, data = _update_func_or_data(data)
         super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
-        self._validator = validator
+        self.validator = validator
         self._validated_value = None
 
-        if self._validator:
-            self._validator.bind(self)
+        if self.validator:
+            self.validator.bind(self)
 
     def _view(self) -> TextFieldView:
         return TextFieldView(self._id, self.data, self.enabled, self.label, self.optional)
@@ -203,8 +211,8 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         self.data = view.data
 
     def _validate(self, view: TextFieldView):
-        if self._validator:
-            self._validated_value = self._validator.validate(view.data)
+        if self.validator:
+            self._validated_value = self.validator.validate(view.data)
 
     def _value(self) -> ty.Optional[ty.Any]:
         return self._validated_value or self.data

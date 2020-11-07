@@ -13,7 +13,7 @@ import dstack.app.dependencies as dp
 import dstack.util as util
 from dstack.app import depends
 from dstack.app.handlers import AppEncoder
-from dstack.app.validators import int_validator
+from dstack.app.validators import int_validator, float_validator
 from dstack.handler import FrameData
 from dstack.version import __version__ as dstack_version
 from tests.app.test_package.mymodule import test_app, foo
@@ -199,6 +199,57 @@ class TestApp(TestCase):
 
         try:
             encoder.encode(my_func2, None, params={
+                "x": c1,
+                "y": c2
+            })
+            self.fail()
+        except ValueError:
+            pass
+
+    def test_signature_analysis_for_types(self):
+        def my_func1(x: int, y: str):
+            pass
+
+        def my_func2(x: float, y: str):
+            pass
+
+        c2 = ctrl.TextField("hello", id="c2")
+        c1 = ctrl.TextField("10", id="c1")
+
+        self.assertIsNone(c1.validator)
+        self.assertIsNone(c2.validator)
+
+        encoder = AppEncoder(force_serialization=True)
+        # to make visible controls changes outside after encoding
+        # it's much easier compared with controller deserialization
+
+        encoder._copy_controls = False
+
+        encoder.encode(my_func1, None, params={
+            "x": c1,
+            "y": c2
+        })
+
+        self.assertIsNone(c2.validator)
+        self.assertIsNotNone(c1.validator)
+        self.assertEqual("int", c1.validator.type())
+
+        c1 = ctrl.TextField("10", id="c1")
+        c2 = ctrl.TextField("hello", id="c2")
+
+        encoder.encode(my_func2, None, params={
+            "x": c1,
+            "y": c2
+        })
+
+        self.assertIsNotNone(c1.validator)
+        self.assertEqual("float", c1.validator.type())
+
+        c1 = ctrl.TextField("10", id="c1", validator=float_validator())
+        c2 = ctrl.TextField("hello", id="c2")
+
+        try:
+            encoder.encode(my_func1, None, params={
                 "x": c1,
                 "y": c2
             })
