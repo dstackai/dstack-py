@@ -209,7 +209,7 @@ class TestControls(TestCase):
         self.assertIsNotNone(apply_view)
         self.assertFalse(apply_view.enabled)
 
-        c1.apply(ctrl.TextFieldView(c1.get_id(), True, None, "10"))
+        c1.apply(ctrl.TextFieldView(c1.get_id(), data="10", enabled=True))
         apply_view = self.get_apply(controller.list())
         self.assertTrue(apply_view.enabled)
 

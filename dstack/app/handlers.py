@@ -1,4 +1,6 @@
+import copy
 import inspect
+import re
 import shutil
 import typing as ty
 from pathlib import Path
@@ -22,11 +24,14 @@ class ControlWrapper(DecoratedValue):
 
 
 class AppEncoder(Encoder[ty.Callable]):
-    def __init__(self, temp_dir: ty.Optional[str] = None, archive: str = "zip", force_serialization: bool = False):
+    def __init__(self, temp_dir: ty.Optional[str] = None, archive: str = "zip",
+                 force_serialization: bool = False, error_if_not_match_signature: bool = True):
         super().__init__()
         self._temp_dir = Path(temp_dir or gettempdir())
         self._archive = archive
         self._force_serialization = force_serialization
+        self._error_if_not_match_signature = error_if_not_match_signature
+        self._copy_controls = True
 
     def encode(self, obj, description: ty.Optional[str], params: ty.Optional[ty.Dict]) -> FrameData:
         force_serialization = self._force_serialization
@@ -47,21 +52,37 @@ class AppEncoder(Encoder[ty.Callable]):
         else:
             deps = _get_deps(obj)
 
-        _check_signature(obj, list(params.keys()))
+        controls = []
+
+        # do some signature analysis here
+        sig = inspect.signature(obj)
+        keys = list(params.keys())
+        for p in sig.parameters.values():
+            if p.name in keys:
+                if sig.parameters[p.name].annotation != inspect.Parameter.empty:
+                    (is_optional, tpe) = _is_optional(str(p.annotation))
+                    value = params[p.name]
+                    if isinstance(value, Control):
+                        if self._copy_controls:
+                            value = copy.copy(value)
+
+                        if value.optional is None:
+                            value.optional = is_optional
+                        else:
+                            # if param in the function is optional, and the control is not but not vice versa
+                            if is_optional < value.optional and self._error_if_not_match_signature:
+                                raise ValueError(f"Parameter '{p.name}' is not optional but the control {value} is")
+
+                        controls.append(value)
+                        params[p.name] = ControlWrapper(value)
+            else:
+                raise ValueError(f"Parameter '{p.name}' is not bound")
+
+        controller = Controller(controls)
 
         stage_dir = util.create_path(self._temp_dir)
 
         _stage_deps(deps, stage_dir)
-
-        controls = []
-
-        for k in params.keys():
-            value = params[k]
-            if isinstance(value, Control):
-                controls.append(value)
-                params[k] = ControlWrapper(value)
-
-        controller = Controller(controls)
 
         _serialize(controller, stage_dir / "controller.pickle")
 
@@ -98,11 +119,9 @@ def _serialize(obj: ty.Any, path: Path):
         cloudpickle.dump(obj, f)
 
 
-def _check_signature(func: ty.Callable, keys: ty.List[str]):
-    sig = inspect.signature(func)
-    for p in sig.parameters.values():
-        if not (p.name in keys):
-            raise ValueError(f"Parameter '{p.name}' is not bound")
+def _is_optional(tpe: str) -> (bool, ty.Optional[str]):
+    result = re.search(r"typing.Union\[(.+), NoneType]", tpe)
+    return (True, result.group(1)) if result else (False, None)
 
 
 def _get_deps(func: ty.Callable) -> ty.List[Dependency]:
@@ -134,6 +153,10 @@ def _stage_deps(deps: ty.List[Dependency], root: Path):
     for dep in deps:
         for source in dep.collect():
             source.stage(root)
+
+    # if dependency list is empty we need to make the directory anyway
+    if len(deps) == 0:
+        root.mkdir(parents=True)
 
 
 def _clear_deps(deps: ty.List[Dependency]) -> ty.List[Dependency]:

@@ -159,6 +159,53 @@ class TestApp(TestCase):
 
         shutil.rmtree(base_dir)
 
+    def test_signature_analysis_for_optionals(self):
+        def my_func1(x: int, y: int):
+            return x + y
+
+        def my_func2(x: int, y: ty.Optional[int]):
+            return x + y
+
+        c1 = ctrl.TextField("10", id="c1", validator=int_validator())
+        c2 = ctrl.TextField("20", id="c2")
+
+        encoder = AppEncoder(force_serialization=True)
+        # to make visible controls changes outside after encoding
+        # it's much easier compared with controller deserialization
+
+        encoder._copy_controls = False
+
+        encoder.encode(my_func1, None, params={
+            "x": c1,
+            "y": c2
+        })
+        #
+        self.assertFalse(c1.optional)
+        self.assertFalse(c2.optional)
+
+        c1 = ctrl.TextField("10", id="c1", validator=int_validator())
+        c2 = ctrl.TextField("20", id="c2")
+
+        encoder.encode(my_func2, None, params={
+            "x": c1,
+            "y": c2
+        })
+
+        self.assertFalse(c1.optional)
+        self.assertTrue(c2.optional)
+
+        c1 = ctrl.TextField("10", id="c1", validator=int_validator(), optional=True)
+        c2 = ctrl.TextField("20", id="c2")
+
+        try:
+            encoder.encode(my_func2, None, params={
+                "x": c1,
+                "y": c2
+            })
+            self.fail()
+        except ValueError:
+            pass
+
     @staticmethod
     def _save_data(data: FrameData, filename: ty.Optional[Path] = None, temp_dir: ty.Optional[str] = None) -> Path:
         temp_dir = temp_dir or gettempdir()
