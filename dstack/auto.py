@@ -11,6 +11,7 @@ from dstack.plotly import PlotlyEncoderFactory
 from dstack.sklearn import SklearnModelEncoderFactory, SklearnModelDecoderFactory
 from dstack.tensorflow import TensorFlowKerasModelDecoderFactory, TensorFlowKerasModelEncoderFactory
 from dstack.torch import TorchModelEncoderFactory, TorchModelDecoderFactory
+from dstack.application.handlers import AppEncoderFactory, AppDecoderFactory
 
 
 class UnsupportedObjectTypeException(Exception):
@@ -39,7 +40,8 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
             TorchModelEncoderFactory(),
             TensorFlowKerasModelEncoderFactory(),
             GeoDataFrameEncoderFactory(),
-            FileEncoderFactory()]
+            FileEncoderFactory(),
+            AppEncoderFactory()]
 
         self.decoders = [
             DataFrameDecoderFactory(),
@@ -48,7 +50,9 @@ class AutoHandler(Encoder[Any], Decoder[Any]):
             SklearnModelDecoderFactory(),
             TorchModelDecoderFactory(),
             TensorFlowKerasModelDecoderFactory(),
-            GeoDataFrameDecoderFactory()]
+            GeoDataFrameDecoderFactory(),
+            AppDecoderFactory()
+        ]
 
     def encode(self, obj: Any, description: Optional[str], params: Optional[Dict]) -> FrameData:
         """Create frame data from any known object.

@@ -1,5 +1,5 @@
 import base64
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 
 from deprecation import deprecated
 
@@ -11,6 +11,7 @@ from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameMeta
+from dstack.application import Application
 
 
 def push(stack: str, obj, description: Optional[str] = None,
@@ -221,6 +222,8 @@ def pull_data(context: Context,
                      attach.get("params", None), attach.get("settings", None))
 
 
+# TODO: Support frame and attach_index
+# TODO: Support caching
 def pull(stack: str,
          profile: str = "default",
          params: Optional[Dict] = None,
@@ -258,3 +261,7 @@ def tab(title: Optional[str] = None) -> DecoratedValue:
             return decorated
 
     return Tab(title)
+
+
+def app(function: Callable, **kwargs):
+    return Application(function, **kwargs)

@@ -1,4 +1,4 @@
-from dstack.app.controls import FunctionalValidator, Validator
+from dstack.application.controls import FunctionalValidator, Validator
 
 
 def int_validator() -> Validator[int]:

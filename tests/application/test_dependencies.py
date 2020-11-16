@@ -4,8 +4,10 @@ from pathlib import Path
 from tempfile import gettempdir
 from unittest import TestCase
 
-from dstack.app.handlers import _undress, _get_deps, _stage_deps
-from tests.app.test_package.mymodule import test_app
+from dstack.application import Application
+
+from dstack.application.handlers import _undress, _get_deps, _stage_deps
+from tests.application.test_package.mymodule import test_app
 
 
 class TestDependencies(TestCase):
@@ -19,7 +21,9 @@ class TestDependencies(TestCase):
             shutil.rmtree(temp_base)
 
     def test_simple(self):
-        func = _undress(test_app)
+        app = Application(test_app, requirements="tests/application/test_requirements.txt",
+                          depends=["deprecation", "PyYAML==5.3.1", "tests.application.test_package"])
+        func = _undress(app.function)
         deps = _get_deps(func)
         print(deps)
         stage_dir = self._get_temp_dir("stage1")

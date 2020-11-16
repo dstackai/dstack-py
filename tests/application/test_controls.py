@@ -1,9 +1,9 @@
 import typing as ty
 from unittest import TestCase
 
-import dstack.app.controls as ctrl
-from dstack.app import depends
-from dstack.app.validators import int_validator
+import dstack.application.controls as ctrl
+from dstack import Application
+from dstack.application.validators import int_validator
 
 
 class TestControls(TestCase):
@@ -24,8 +24,7 @@ class TestControls(TestCase):
         return None
 
     def test_simple_update(self):
-        def update(control: ctrl.Control, parents: ty.List[ctrl.Control]):
-            text_field = ty.cast(ctrl.TextField, parents[0])
+        def update(control: ctrl.Control, text_field: ctrl.TextField):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
@@ -73,7 +72,7 @@ class TestControls(TestCase):
             self.assertEqual(c.get_id(), e.id)
 
     def test_update_error(self):
-        def update(control: ctrl.Control, parents: ty.List[ctrl.Control]):
+        def update(control: ctrl.Control, text_area: ctrl.TextField):
             raise ValueError()
 
         c1 = ctrl.TextField("10", id="c1")
@@ -90,7 +89,7 @@ class TestControls(TestCase):
     def test_update_func_called_only_once(self):
         count = 0
 
-        def update_c2(control: ctrl.Control, parents: ty.List[ctrl.Control]):
+        def update_c2(control: ctrl.Control, text_area: ctrl.TextField):
             nonlocal count
             if count == 0:
                 count += 1
@@ -98,10 +97,10 @@ class TestControls(TestCase):
                 print(count)
                 raise RuntimeError()
 
-            control.data = str(int(ty.cast(ctrl.TextField, parents[0]).data) * 2)
+            control.data = str(int(text_area.data) * 2)
 
-        def update_c3_c4(control: ctrl.Control, parents: ty.List[ctrl.Control]):
-            control.data = str(int(ty.cast(ctrl.TextField, parents[0]).data) * 2)
+        def update_c3_c4(control: ctrl.Control, text_area: ctrl.TextField):
+            control.data = str(int(text_area.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField(id="c2", depends=c1, data=update_c2)
@@ -120,9 +119,7 @@ class TestControls(TestCase):
         self.assertEqual("40", v4.data)
 
     def test_combo_box(self):
-        def update(control: ctrl.Control, parents: ty.List[ctrl.Control]):
-            control = ty.cast(ctrl.ComboBox, control)
-            parent = ty.cast(ctrl.ComboBox, parents[0])
+        def update(control: ctrl.ComboBox, parent: ctrl.ComboBox):
             selected = parent.data[parent.selected]
             control.data = [f"{selected} 1", f"{selected} 2"]
 
@@ -174,11 +171,9 @@ class TestControls(TestCase):
         def list_countries_from_db() -> ty.List[Country]:
             return [Country("US", "United States"), Country("DE", "German")]
 
-        def update_cities(control: ctrl.Control, parents: ty.List[ctrl.Control]):
-            p = ty.cast(ctrl.ComboBox, parents[0])
-            c = ty.cast(ctrl.ComboBox, control)
-            country = ty.cast(Country, p.get_model().element(p.selected))
-            c.data = list_cities_from_db_by_code(country)
+        def update_cities(control: ctrl.ComboBox, parent: ctrl.ComboBox):
+            country = ty.cast(Country, parent.get_model().element(parent.selected))
+            control.data = list_cities_from_db_by_code(country)
 
         countries = ctrl.ComboBox(list_countries_from_db, id="countries")
         self.assertTrue(isinstance(countries._derive_model(), ctrl.CallableListModel))
@@ -214,20 +209,19 @@ class TestControls(TestCase):
         self.assertTrue(apply_view.enabled)
 
     def test_controller_apply(self):
-        @ctrl.update
         def update(control, text_field):
             control.data = str(int(text_field.data) * 2)
 
-        @depends(project=True)
-        def test(x: int, y: int):
-            return x + y
+        def test(x: ctrl.Control, y: ctrl.Control):
+            return int(x.value()) + int(y.value())
 
         c1 = ctrl.TextField("10", id="c1", validator=int_validator())
         c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
         controller = ctrl.Controller([c1, c2])
         views = controller.list()
         # print(views)
-        self.assertEqual(30, controller.apply(test, views))
+        app = Application(test, x=c1, y=c2, project=True)
+        self.assertEqual(30, controller.apply(app.function, views))
 
     def test_title_override(self):
         class Item:

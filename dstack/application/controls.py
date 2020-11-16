@@ -78,6 +78,24 @@ class View(ABC):
         return f"{self.__class__.__name__}(id={self.id})"
 
 
+def unpack_view(source: ty.Dict) -> View:
+    type = source["type"]
+    if type == "TextFieldView":
+        return TextFieldView(source["id"], source.get("data"), source.get("enabled"), source.get("label"),
+                             source.get("optional"))
+    elif type == "ApplyView":
+        return ApplyView(source["id"], source.get("enabled"), source.get("label"), source.get("optional"))
+    elif type == "ComboBoxView":
+        return ComboBoxView(source["id"], source.get("selected"), source.get("titles"), source.get("enabled"),
+                            source.get("label"), source.get("optional"))
+    elif type == "SliderView":
+        return SliderView(source["id"], source.get("selected"), source.get("data"), source.get("enabled"),
+                          source.get("label"))
+    else:
+        # TODO: Support FileUploadView
+        raise AttributeError("Unsupported view: " + str(source))
+
+
 V = ty.TypeVar("V", bound=View)
 
 
@@ -86,7 +104,7 @@ class Control(ABC, ty.Generic[V]):
                  label: ty.Optional[str],
                  id: ty.Optional[str],
                  depends: ty.Optional[ty.Union[ty.List['Control'], 'Control']],
-                 update_func: ty.Optional[ty.Callable[['Control', ty.List['Control']], None]],
+                 update_func: ty.Optional[ty.Callable],
                  require_apply: bool,
                  optional: ty.Optional[bool]
                  ):
@@ -122,7 +140,7 @@ class Control(ABC, ty.Generic[V]):
 
             if self._dirty:
                 try:
-                    self._update_func(self, self._parents)
+                    self._update_func(self, *self._parents)
                     self._dirty = False
                 except Exception as e:
                     raise UpdateError(e, self._id)
@@ -171,11 +189,11 @@ class TextFieldView(View):
         return {"data": self.data}
 
 
-def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable[[Control, ty.List[Control]], None]],
+def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable],
                                            ty.Optional[ty.Any]):
     if isinstance(data, ty.Callable):
         sig = signature(data)
-        if len(sig.parameters) == 2:
+        if len(sig.parameters) > 1:
             return data, None
         else:
             return None, data
@@ -185,7 +203,7 @@ def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable[[Control, ty.
 
 class TextField(Control[TextFieldView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Union[ty.Optional[str], ty.Callable[[Control, ty.List[Control]], None]] = None,
+                 data: ty.Union[ty.Optional[str], ty.Callable] = None,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
@@ -283,7 +301,7 @@ class ComboBoxView(View):
 
 class ComboBox(Control[ComboBoxView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Union[T, ty.Callable[[Control, ty.List[Control]], None]],
+                 data: ty.Union[T, ty.Callable],
                  model: ty.Optional[ListModel[T]] = None,
                  selected: int = 0,
                  label: ty.Optional[str] = None,
@@ -339,7 +357,7 @@ class SliderView(View):
 
 class Slider(Control[SliderView]):
     def __init__(self,
-                 data: ty.Union[ty.Iterable[float], ty.Callable[[Control, ty.List[Control]], None]],
+                 data: ty.Union[ty.Iterable[float], ty.Callable],
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
@@ -465,13 +483,6 @@ class Controller(object):
         for view in views:
             self.map[view.id].apply(view)
 
-        values = [self.map[c_id].value() for c_id in self._ids]
+        values = [self.map[c_id] for c_id in self._ids]
 
         return func(*values)
-
-
-def update(func) -> ty.Callable[[Control, ty.List[Control]], None]:
-    def wrapper(control: Control, depends: ty.List[Control]):
-        func(control, *depends)
-
-    return wrapper
