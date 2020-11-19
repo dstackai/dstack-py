@@ -240,11 +240,15 @@ def _save_data(data: FrameData, filename: ty.Optional[Path] = None, temp_dir: ty
 
 class Execution:
     # TODO: Handle outputs
-    def __init__(self, id: str, status: str, views: ty.List[View], output: ty.Optional[str]):
-        self.output = output
-        self.views = views
-        self.status = status
+    def __init__(self, id: str, status: str, views: ty.List[View], output: ty.Optional[str], logs: ty.Optional[str]):
         self.id = id
+        self.status = status
+        self.views = views
+        self.output = output
+        self.logs = logs
+
+    def is_in_progress(self):
+        return self.status == "READY" or self.status == "SCHEDULED" or self.status == "RUNNING"
 
 
 class AppExecutor:
@@ -267,7 +271,7 @@ class AppExecutor:
         p.wait()
         return self.poll(execution_id).views
 
-    def execute(self, views: ty.Optional[ty.List[View]]) -> str:
+    def execute(self, views: ty.Optional[ty.List[View]]) -> Execution:
         import subprocess
         import sys
 
@@ -275,17 +279,18 @@ class AppExecutor:
 
         self._write_views(execution_id, views)
 
-        subprocess.Popen([sys.executable, "execute_script.py", execution_id, 'True'],
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT,
-                         cwd=self.app_dir
-                         )
-        return execution_id
+        p = subprocess.Popen([sys.executable, "execute_script.py", execution_id, 'True'],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             cwd=self.app_dir
+                             )
+        p.wait(1)
+        return self.poll(execution_id)
 
     def _write_views(self, execution_id, views):
         if views:
             execution = {
-                'status': 'ready',
+                'status': 'READY',
                 'views': [v.pack() for v in views]
             }
 
@@ -295,15 +300,15 @@ class AppExecutor:
             execution_file.write_text(json.dumps(execution))
 
     # def poll(self, execution_id: str) -> ty.Union[str, (ty.List[View], ty.Optional[Any])]:
-    def poll(self, execution_id: str) -> ty.Optional[Execution]:
+    def poll(self, execution_id: str) -> Execution:
         execution_file = Path(self.app_dir) / "executions" / (execution_id + '.json')
         if execution_file.exists():
             execution = json.loads(execution_file.read_bytes())
             return Execution(execution_id, execution["status"],
                              [unpack_view(v) for v in execution["views"]],
-                             execution.get("output"))
+                             execution.get("output"), execution.get("logs"))
         else:
-            return None
+            return Execution(execution_id, "SCHEDULED", None, None, None)
 
 
 class AppDecoder(Decoder[AppExecutor]):
@@ -313,12 +318,27 @@ class AppDecoder(Decoder[AppExecutor]):
     def decode(self, data: FrameData) -> AppExecutor:
         app_dir = _save_data(data)
 
-        execution_base_script = """
+        function_settings = data.settings["function"]
+
+        if function_settings["type"] == "source":
+            def get_module_and_func(full_name):
+                path = full_name.split(".")
+                return ".".join(path[0:-1]), path[-1]
+
+            func_module, func_name = get_module_and_func(function_settings["data"])
+
+            load_func_script = f"from {func_module} import {func_name} as func"""
+        else:
+            load_func_script = "with open(\"function.pickle\", \"rb\") as f:\n\tfunc = cloudpickle.load(f)"
+
+        execute_script = f"""
 import cloudpickle
 import sys
 import json
+import traceback
 from pathlib import Path
 from dstack.application.controls import unpack_view
+from dstack import AutoHandler
 
 execution_id = sys.argv[1]
 apply = sys.argv[2] == 'True'
@@ -340,49 +360,33 @@ if execution_file.exists():
 else:
     views = controller.list()
 
-execution = {
-    'status': 'running' if apply else 'ready',
+execution = {{
+    'status': 'RUNNING' if apply else 'READY',
     'views': [v.pack() for v in views]
-}
+}}
 
 execution_file.write_text(json.dumps(execution))
-"""
 
-        function_settings = data.settings["function"]
+{load_func_script}
 
-        if function_settings["type"] == "source":
-            def get_module_and_func(full_name):
-                path = full_name.split(".")
-                return ".".join(path[0:-1]), path[-1]
-
-            func_module, func_name = get_module_and_func(function_settings["data"])
-
-            execute_script = f"""
-{execution_base_script}
-
-from {func_module} import {func_name} as _func
-
-if (apply):
-    output = controller.apply(_func, views)
-    # TODO: Handle failure
-    execution['status'] = 'finished'
-    execution['output'] = str(output)
+if apply:
+    try:
+        result = controller.apply(func, views)
+        # TODO: Handle failure
+        execution['status'] = 'FINISHED'
+        output = {{}}
+        encoder = AutoHandler()
+        frame_data = encoder.encode(result, None, None)
+        output['application'] = frame_data.application
+        output['content_type'] = frame_data.content_type
+        output['data'] = frame_data.data.base64value() 
+        execution['output'] = output
+    except Exception:
+        execution['status'] = 'FAILED'
+        execution['logs'] = str(traceback.format_exc())
     execution_file.write_text(json.dumps(execution))
 """
-        else:
-            execute_script = f"""
-{execution_base_script}
 
-with open("function.pickle", "rb") as f:
-    func = cloudpickle.load(f)
-
-if (apply):
-    output = controller.apply(func, views)
-    # TODO: Handle failure
-    execution['status'] = 'finished'
-    execution['output'] = str(output)
-    execution_file.write_text(json.dumps(execution))
-"""
         function_execute_file = Path(app_dir) / "execute_script.py"
         function_execute_file.write_text(dedent(execute_script).lstrip())
 
