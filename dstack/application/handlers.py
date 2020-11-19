@@ -255,7 +255,7 @@ class AppExecutor:
     def __init__(self, app_dir):
         self.app_dir = app_dir
 
-    def views(self, views: ty.Optional[ty.List[View]] = None) -> ty.List[View]:
+    def execute(self, views: ty.Optional[ty.List[View]] = None, apply: bool = False) -> Execution:
         import subprocess
         import sys
 
@@ -263,28 +263,15 @@ class AppExecutor:
 
         self._write_views(execution_id, views)
 
-        p = subprocess.Popen([sys.executable, "execute_script.py", execution_id, 'False'],
+        p = subprocess.Popen([sys.executable, "execute_script.py", execution_id, str(apply)],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT,
                              cwd=self.app_dir
                              )
-        p.wait()
-        return self.poll(execution_id).views
-
-    def execute(self, views: ty.Optional[ty.List[View]]) -> Execution:
-        import subprocess
-        import sys
-
-        execution_id = str(uuid4())
-
-        self._write_views(execution_id, views)
-
-        p = subprocess.Popen([sys.executable, "execute_script.py", execution_id, 'True'],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT,
-                             cwd=self.app_dir
-                             )
-        p.wait(1)
+        if apply:
+            p.wait(1)
+        else:
+            p.wait()
         return self.poll(execution_id)
 
     def _write_views(self, execution_id, views):
