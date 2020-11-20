@@ -248,7 +248,7 @@ class Execution:
         self.logs = logs
 
     def is_in_progress(self):
-        return self.status == "READY" or self.status == "SCHEDULED" or self.status == "RUNNING"
+        return self.status == "SCHEDULED" or self.status == "RUNNING"
 
 
 class AppExecutor:
@@ -261,7 +261,7 @@ class AppExecutor:
 
         execution_id = str(uuid4())
 
-        self._write_views(execution_id, views)
+        self._write_views(execution_id, views, apply)
 
         p = subprocess.Popen([sys.executable, "execute_script.py", execution_id, str(apply)],
                              stdout=subprocess.PIPE,
@@ -269,15 +269,18 @@ class AppExecutor:
                              cwd=self.app_dir
                              )
         if apply:
-            p.wait(1)
+            try:
+                p.wait(1)
+            except subprocess.TimeoutExpired:
+                pass
         else:
             p.wait()
         return self.poll(execution_id)
 
-    def _write_views(self, execution_id, views):
+    def _write_views(self, execution_id, views, apply: bool = False):
         if views:
             execution = {
-                'status': 'READY',
+                'status': 'SCHEDULED' if apply else 'READY',
                 'views': [v.pack() for v in views]
             }
 
