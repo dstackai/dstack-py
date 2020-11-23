@@ -13,7 +13,6 @@ import dstack.application.dependencies as dp
 import dstack.util as util
 from dstack import app
 from dstack.application.handlers import AppEncoder
-from dstack.application.validators import int_validator, float_validator
 from dstack.handler import FrameData
 from dstack.version import __version__ as dstack_version
 from tests.application.test_package.mymodule import test_app, foo
@@ -99,10 +98,7 @@ class TestApp(TestCase):
         def baz():
             print("baz")
 
-        # TODO: Implement validators
-        # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
         c1 = ctrl.TextField("10", id="c1")
-        # c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
         c2 = ctrl.TextField(id="c2", depends=c1, data=update)
 
         @app(x=c1, y=c2, depends=["tests.application.test_package"])
@@ -147,110 +143,6 @@ class TestApp(TestCase):
         env.dispose()
 
         shutil.rmtree(base_dir)
-
-    def test_signature_analysis_for_optionals(self):
-        # TODO: Implement validator
-        # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
-        c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField("20", id="c2")
-
-        @app(x=c1, y=c2)
-        def my_func1(x: ctrl.TextField, y: ctrl.TextField):
-            return int(x.value()) + int(y.value())
-
-        encoder = AppEncoder(force_serialization=True)
-        # to make visible controls changes outside after encoding
-        # it's much easier compared with controller deserialization
-
-        encoder._copy_controls = False
-
-        encoder.encode(my_func1, None, None)
-
-        self.assertFalse(c1.optional)
-        self.assertFalse(c2.optional)
-
-        # TODO: Implement validator
-        # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
-        c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField("20", id="c2")
-
-        @app(x=c1, y=c2)
-        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
-            return int(x.value()) + int(y.value())
-
-        encoder.encode(my_func2, None, None)
-
-        # TODO: Implement optional
-        # self.assertFalse(c1.optional)
-        # self.assertTrue(c2.optional)
-
-        # TODO: Implement validator
-        # c1 = ctrl.TextField("10", id="c1", validator=int_validator(), optional=True)
-        # c2 = ctrl.TextField("20", id="c2")
-
-        # @app(x=c1, y=c2)
-        # def my_func3(x: ctrl.TextField, y: ctrl.TextField):
-        #     return int(x.value()) + int(y.value())
-
-        # try:
-        #     encoder.encode(my_func3, None, None)
-        #     self.fail()
-        # except ValueError:
-        #     pass
-
-    def test_signature_analysis_for_types(self):
-        c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField("hello", id="c2")
-
-        @app(x=c1, y=c2)
-        def my_func1(x: ctrl.TextField, y: ctrl.TextField):
-            pass
-
-        self.assertIsNone(c1.validator)
-        self.assertIsNone(c2.validator)
-
-        encoder = AppEncoder(force_serialization=True)
-        # to make visible controls changes outside after encoding
-        # it's much easier compared with controller deserialization
-
-        encoder._copy_controls = False
-
-        encoder.encode(my_func1, None, None)
-
-        self.assertIsNone(c2.validator)
-        # TODO: Implement validators
-        # self.assertIsNotNone(c1.validator)
-        # self.assertEqual("int", c1.validator.type())
-
-        c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField("hello", id="c2")
-
-        @app(x=c1, y=c2)
-        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
-            pass
-
-        encoder.encode(my_func2, None, None)
-
-        # TODO: Implement validators
-        # self.assertIsNotNone(c1.validator)
-        # self.assertEqual("float", c1.validator.type())
-
-        # TODO: Implement validators
-        # c1 = ctrl.TextField("10", id="c1", validator=float_validator())
-        c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField("hello", id="c2")
-
-        @app(x=c1, y=c2)
-        def my_func3(x: ctrl.TextField, y: ctrl.TextField):
-            pass
-
-
-        # TODO: Implement validators
-        # try:
-        #     encoder.encode(my_func3, None, None)
-        #     self.fail()
-        # except ValueError:
-        #     pass
 
     @staticmethod
     def _save_data(data: FrameData, filename: ty.Optional[Path] = None, temp_dir: ty.Optional[str] = None) -> Path:

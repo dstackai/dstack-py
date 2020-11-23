@@ -25,38 +25,6 @@ class UpdateError(RuntimeError):
 T = ty.TypeVar("T")
 
 
-class Validator(ABC, ty.Generic[T]):
-    def __init__(self):
-        self._id: ty.Optional[str] = None
-
-    def bind(self, control: 'Control'):
-        self._id = control.get_id()
-
-    @abstractmethod
-    def validate(self, value: str) -> T:
-        pass
-
-    @abstractmethod
-    def type(self) -> str:
-        pass
-
-
-class FunctionalValidator(Validator):
-    def __init__(self, func: ty.Callable[[str], T], tpe: str):
-        super().__init__()
-        self._func = func
-        self._tpe = tpe
-
-    def validate(self, value: str) -> T:
-        try:
-            return self._func(value)
-        except Exception as cause:
-            raise ValidationError(cause, self._id)
-
-    def type(self) -> str:
-        return self._tpe
-
-
 class View(ABC):
     def __init__(self, id: str, enabled: ty.Optional[bool], label: ty.Optional[str], optional: ty.Optional[bool]):
         self.id = id
@@ -138,15 +106,11 @@ class Control(ABC, ty.Generic[V]):
         return self._view()
 
     def apply(self, view: V):
-        self._validate(view)
         self._pending_view = view
 
     def value(self) -> ty.Any:
         self._update()
         return self._value()
-
-    def _validate(self, view: V):
-        pass
 
     @abstractmethod
     def _view(self) -> V:
@@ -189,18 +153,12 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 validator: ty.Optional[Validator[T]] = None,
                  require_apply: bool = True,
                  optional: ty.Optional[bool] = None
                  ):
         update_func, data = _update_func_or_data(data)
         super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
-        self.validator = validator
-        self._validated_value = None
-
-        if self.validator:
-            self.validator.bind(self)
 
     def _view(self) -> TextFieldView:
         return TextFieldView(self._id, self.data, self.enabled, self.label, self.optional)
@@ -210,12 +168,8 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         assert self._id == view.id
         self.data = view.data
 
-    def _validate(self, view: TextFieldView):
-        if self.validator:
-            self._validated_value = self.validator.validate(view.data)
-
     def _value(self) -> ty.Optional[ty.Any]:
-        return self._validated_value or self.data
+        return self.data
 
 
 class ListModel(ABC, ty.Generic[T]):

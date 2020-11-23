@@ -4,7 +4,6 @@ from unittest import TestCase
 import dstack.controls as ctrl
 from dstack.controls import Controller, ApplyView
 from dstack import app
-from dstack.application.validators import int_validator
 
 
 class TestControls(TestCase):
@@ -61,16 +60,6 @@ class TestControls(TestCase):
 
         if isinstance(v2, ctrl.TextFieldView):
             self.assertEqual("20", v2.data)
-
-    def test_validator(self):
-        c = ctrl.TextField(id="c", validator=int_validator())
-        c.apply(ctrl.TextFieldView(id=c.get_id(), enabled=True, data="10", label=None))
-
-        try:
-            c.apply(ctrl.TextFieldView(id=c.get_id(), enabled=True, data="ttt", label=None))
-            self.fail()
-        except ctrl.ValidationError as e:
-            self.assertEqual(c.get_id(), e.id)
 
     def test_update_error(self):
         def update(control: ctrl.Control, text_area: ctrl.TextField):
@@ -213,8 +202,8 @@ class TestControls(TestCase):
         def update(control, text_field):
             control.data = str(int(text_field.data) * 2)
 
-        c1 = ctrl.TextField("10", id="c1", validator=int_validator())
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
+        c1 = ctrl.TextField("10", id="c1")
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
 
         @app(x=c1, y=c2, project=True)
         def test(x: ctrl.Control, y: ctrl.Control):

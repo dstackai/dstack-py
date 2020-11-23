@@ -14,9 +14,8 @@ from textwrap import dedent
 
 import dstack.util as util
 from dstack.handler import EncoderFactory, DecoderFactory, Encoder, FrameData, Decoder
-from dstack.controls import Control, TextField, View, Controller, unpack_view
+from dstack.controls import Control, View, Controller, unpack_view
 from dstack.application.dependencies import Dependency, ModuleDependency
-from dstack.application.validators import int_validator, float_validator
 from dstack.content import FileContent, MediaType
 
 from typing import Any
@@ -84,6 +83,7 @@ class AppEncoder(Encoder[ty.Callable]):
         for p in sig.parameters.values():
             if p.name in keys:
                 if sig.parameters[p.name].annotation != inspect.Parameter.empty:
+                    # TODO: Make sure the code is correct and needed
                     (is_optional, tpe) = _split_type(str(p.annotation))
                     value = obj.__controls__[p.name]
 
@@ -92,10 +92,6 @@ class AppEncoder(Encoder[ty.Callable]):
                             value = copy.copy(value)
 
                         self._check_optional(is_optional, p.name, value)
-
-                    if isinstance(value, TextField):
-                        # TODO: Implement validation
-                        # self._check_type(p.name, tpe, value)
 
                         controls.append(value)
             else:
@@ -136,20 +132,8 @@ class AppEncoder(Encoder[ty.Callable]):
                          MediaType("application/octet-stream", "application/python"),
                          description, params, settings)
 
-    def _check_type(self, name: str, tpe: str, value: TextField):
-        validator = value.validator
-        if validator is None:
-            if tpe == "int":
-                value.validator = int_validator()
-            elif tpe == "float":
-                value.validator = float_validator()
-        elif (tpe == "float" and validator.type() not in ["int", "float"]) \
-                or tpe != validator.type():
-            if self._strict_type_check:
-                raise ValueError(f"Type of '{name}' is not matched to the control's validator: "
-                                 f"required {tpe} but found {validator.type()}")
-
     def _check_optional(self, is_optional: bool, name, value: Control):
+        # TODO: Make sure the code is right
         if value.optional is None:
             value.optional = is_optional
         else:
@@ -289,7 +273,6 @@ class AppExecutor:
             execution_file = executions / (execution_id + '.json')
             execution_file.write_text(json.dumps(execution))
 
-    # def poll(self, execution_id: str) -> ty.Union[str, (ty.List[View], ty.Optional[Any])]:
     def poll(self, execution_id: str) -> Execution:
         execution_file = Path(self.app_dir) / "executions" / (execution_id + '.json')
         if execution_file.exists():
@@ -362,7 +345,6 @@ execution_file.write_text(json.dumps(execution))
 if apply:
     try:
         result = controller.apply(func, views)
-        # TODO: Handle failure
         execution['status'] = 'FINISHED'
         output = {{}}
         encoder = AutoHandler()
