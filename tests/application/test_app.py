@@ -8,10 +8,10 @@ from tempfile import gettempdir
 from textwrap import dedent
 from unittest import TestCase
 
-import dstack.application.controls as ctrl
+import dstack.controls as ctrl
 import dstack.application.dependencies as dp
 import dstack.util as util
-from dstack.application import Application
+from dstack import app
 from dstack.application.handlers import AppEncoder
 from dstack.application.validators import int_validator, float_validator
 from dstack.handler import FrameData
@@ -55,21 +55,8 @@ class TestApp(TestCase):
             self.pip_install(wheel)
 
     def test_first_example(self):
-        def update(control: ctrl.TextField, text_field: ctrl.TextField):
-            control.data = str(int(text_field.data) * 2)
-
-        # TODO: Implement validators
-        # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
-        c1 = ctrl.TextField("10", id="c1")
-        # TODO: Implement validators
-        # c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
-
         encoder = AppEncoder()
-        frame_data = encoder.encode(Application(test_app, x=c1, y=c2,
-                                                requirements="tests/application/test_requirements.txt",
-                                                depends=["deprecation", "PyYAML==5.3.1", "dstack",
-                                                         "tests.application.test_package"]), None, None)
+        frame_data = encoder.encode(test_app, None, None)
 
         function_settings = frame_data.settings["function"]
         self.assertEqual("source", function_settings["type"])
@@ -112,19 +99,20 @@ class TestApp(TestCase):
         def baz():
             print("baz")
 
-        def my_func(x: ctrl.TextField, y: ctrl.TextField):
-            foo()
-            baz()
-            return int(x.value()) + int(y.value())
-
         # TODO: Implement validators
         # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
         c1 = ctrl.TextField("10", id="c1")
         # c2 = ctrl.TextField(id="c2", depends=c1, data=update, validator=int_validator())
         c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+
+        @app(x=c1, y=c2, depends=["tests.application.test_package"])
+        def my_func(x: ctrl.TextField, y: ctrl.TextField):
+            foo()
+            baz()
+            return int(x.value()) + int(y.value())
+
         encoder = AppEncoder(force_serialization=True)
-        app = Application(my_func, x=c1, y=c2, depends=["tests.application.test_package"])
-        frame_data = encoder.encode(app, None, None)
+        frame_data = encoder.encode(my_func, None, None)
 
         function_settings = frame_data.settings["function"]
         self.assertEqual("pickle", function_settings["type"])
@@ -161,16 +149,14 @@ class TestApp(TestCase):
         shutil.rmtree(base_dir)
 
     def test_signature_analysis_for_optionals(self):
-        def my_func1(x: ctrl.TextField, y: ctrl.TextField):
-            return int(x.value()) + int(y.value())
-
-        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
-            return int(x.value()) + int(y.value())
-
         # TODO: Implement validator
         # c1 = ctrl.TextField("10", id="c1", validator=int_validator())
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField("20", id="c2")
+
+        @app(x=c1, y=c2)
+        def my_func1(x: ctrl.TextField, y: ctrl.TextField):
+            return int(x.value()) + int(y.value())
 
         encoder = AppEncoder(force_serialization=True)
         # to make visible controls changes outside after encoding
@@ -178,8 +164,8 @@ class TestApp(TestCase):
 
         encoder._copy_controls = False
 
-        encoder.encode(Application(my_func1, x=c1, y=c2), None, None)
-        #
+        encoder.encode(my_func1, None, None)
+
         self.assertFalse(c1.optional)
         self.assertFalse(c2.optional)
 
@@ -188,7 +174,11 @@ class TestApp(TestCase):
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField("20", id="c2")
 
-        encoder.encode(Application(my_func2, x=c1, y=c2), None, None)
+        @app(x=c1, y=c2)
+        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
+            return int(x.value()) + int(y.value())
+
+        encoder.encode(my_func2, None, None)
 
         # TODO: Implement optional
         # self.assertFalse(c1.optional)
@@ -196,24 +186,25 @@ class TestApp(TestCase):
 
         # TODO: Implement validator
         # c1 = ctrl.TextField("10", id="c1", validator=int_validator(), optional=True)
-        # c1 = ctrl.TextField("10", id="c1", optional=True)
         # c2 = ctrl.TextField("20", id="c2")
 
+        # @app(x=c1, y=c2)
+        # def my_func3(x: ctrl.TextField, y: ctrl.TextField):
+        #     return int(x.value()) + int(y.value())
+
         # try:
-        #     encoder.encode(Application(my_func2, x=c1, y=c2), None, None)
+        #     encoder.encode(my_func3, None, None)
         #     self.fail()
         # except ValueError:
         #     pass
 
     def test_signature_analysis_for_types(self):
+        c1 = ctrl.TextField("10", id="c1")
+        c2 = ctrl.TextField("hello", id="c2")
+
+        @app(x=c1, y=c2)
         def my_func1(x: ctrl.TextField, y: ctrl.TextField):
             pass
-
-        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
-            pass
-
-        c2 = ctrl.TextField("hello", id="c2")
-        c1 = ctrl.TextField("10", id="c1")
 
         self.assertIsNone(c1.validator)
         self.assertIsNone(c2.validator)
@@ -224,7 +215,7 @@ class TestApp(TestCase):
 
         encoder._copy_controls = False
 
-        encoder.encode(Application(my_func1, x=c1, y=c2), None, None)
+        encoder.encode(my_func1, None, None)
 
         self.assertIsNone(c2.validator)
         # TODO: Implement validators
@@ -234,7 +225,11 @@ class TestApp(TestCase):
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField("hello", id="c2")
 
-        encoder.encode(Application(my_func2, x=c1, y=c2), None, None)
+        @app(x=c1, y=c2)
+        def my_func2(x: ctrl.TextField, y: ctrl.TextField):
+            pass
+
+        encoder.encode(my_func2, None, None)
 
         # TODO: Implement validators
         # self.assertIsNotNone(c1.validator)
@@ -245,9 +240,14 @@ class TestApp(TestCase):
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField("hello", id="c2")
 
+        @app(x=c1, y=c2)
+        def my_func3(x: ctrl.TextField, y: ctrl.TextField):
+            pass
+
+
         # TODO: Implement validators
         # try:
-        #     encoder.encode(Application(my_func1, x=c1, y=c2), None, None)
+        #     encoder.encode(my_func3, None, None)
         #     self.fail()
         # except ValueError:
         #     pass
