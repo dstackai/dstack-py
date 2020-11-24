@@ -1,11 +1,6 @@
 import base64
 from typing import Optional, Dict, Any, Callable
 
-import inspect
-import sys
-import typing as ty
-from functools import wraps
-from pathlib import Path
 from deprecation import deprecated
 
 from dstack.auto import AutoHandler
@@ -16,7 +11,7 @@ from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameMeta
-import dstack.application.dependencies as dp
+from dstack.application import Application
 
 
 def push(stack: str, obj, description: Optional[str] = None,
@@ -252,66 +247,21 @@ def create_context(stack: str, profile: str = "default") -> Context:
     return Context(stack, profile, protocol)
 
 
-class Tab(DecoratedValue):
-    def __init__(self, title: Optional[str] = None):
-        self.title = title
-
-    def decorate(self) -> Dict[str, Any]:
-        decorated = {"type": "tab"}
-
-        if self.title:
-            decorated["title"] = self.title
-
-        return decorated
-
-
 def tab(title: Optional[str] = None) -> DecoratedValue:
+    class Tab(DecoratedValue):
+        def __init__(self, title: Optional[str] = None):
+            self.title = title
+
+        def decorate(self) -> Dict[str, Any]:
+            decorated = {"type": "tab"}
+
+            if self.title:
+                decorated["title"] = self.title
+
+            return decorated
+
     return Tab(title)
 
 
-def app(**kwargs):
-    def dep() -> ty.List[dp.Dependency]:
-        result = []
-
-        requirements = kwargs.get("requirements")
-        if requirements:
-            result.append(dp.RequirementsDependency(Path(requirements)))
-
-        project = kwargs.get("project")
-        if project:
-            result.append(dp.ProjectDependency())
-
-        depends = kwargs.get("depends")
-        if depends:
-            for d in depends:
-                if inspect.ismodule(d):
-                    result.append(dp.ModuleDependency(d))
-                else:
-                    result.append(dp.PackageDependency(d))
-
-        return result
-
-    def decorator(func):
-        if hasattr(func, "__decorated__"):
-            func = func.__decorated__
-
-        if hasattr(func, "__depends__"):
-            func.__depends__ += dep()
-        else:
-            func.__depends__ = dep()
-
-        if func.__module__ != "__main__":
-            module = sys.modules[func.__module__]
-            func.__depends__.append(dp.ModuleDependency(module))
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        wrapper.__decorated__ = func
-        wrapper.__controls__ = {k: v for k, v in kwargs.items() if k not in ["requirements", "depends", "project"]}
-
-        return wrapper
-
-    return decorator
-
+def app(function: Callable, **kwargs):
+    return Application(function, **kwargs)

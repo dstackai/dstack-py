@@ -55,7 +55,17 @@ class TestApp(TestCase):
 
     def test_first_example(self):
         encoder = AppEncoder()
-        frame_data = encoder.encode(test_app, None, None)
+
+        def update(control: ctrl.TextField, text_field: ctrl.TextField):
+            control.data = str(int(text_field.data) * 2)
+
+        c1 = ctrl.TextField("10", id="c1")
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+
+        my_app = app(test_app, x=c1, y=c2, requirements="tests/application/test_requirements.txt",
+                     depends=["deprecation", "PyYAML==5.3.1", "tests.application.test_package"])
+
+        frame_data = encoder.encode(my_app, None, None)
 
         function_settings = frame_data.settings["function"]
         self.assertEqual("source", function_settings["type"])
@@ -101,14 +111,15 @@ class TestApp(TestCase):
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField(id="c2", depends=c1, data=update)
 
-        @app(x=c1, y=c2, depends=["tests.application.test_package"])
         def my_func(x: ctrl.TextField, y: ctrl.TextField):
             foo()
             baz()
             return int(x.value()) + int(y.value())
 
+        my_app = app(my_func, x=c1, y=c2, depends=["tests.application.test_package"])
+
         encoder = AppEncoder(force_serialization=True)
-        frame_data = encoder.encode(my_func, None, None)
+        frame_data = encoder.encode(my_app, None, None)
 
         function_settings = frame_data.settings["function"]
         self.assertEqual("pickle", function_settings["type"])

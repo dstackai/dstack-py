@@ -5,6 +5,8 @@ from tempfile import gettempdir
 from unittest import TestCase
 
 from dstack.application.handlers import _undress, _get_deps, _stage_deps
+from dstack.controls import TextField
+from dstack import app
 from tests.application.test_package.mymodule import test_app
 
 
@@ -19,7 +21,16 @@ class TestDependencies(TestCase):
             shutil.rmtree(temp_base)
 
     def test_simple(self):
-        func = _undress(test_app)
+        def update(control: TextField, text_field: TextField):
+            control.data = str(int(text_field.data) * 2)
+
+        c1 = TextField("10", id="c1")
+        c2 = TextField(id="c2", depends=c1, data=update)
+
+        my_app = app(test_app, x=c1, y=c2, requirements="tests/application/test_requirements.txt",
+                     depends=["deprecation", "PyYAML==5.3.1", "tests.application.test_package"])
+
+        func = _undress(my_app.function)
         deps = _get_deps(func)
         print(deps)
         stage_dir = self._get_temp_dir("stage1")

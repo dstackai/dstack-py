@@ -13,6 +13,7 @@ import cloudpickle
 from textwrap import dedent
 
 import dstack.util as util
+from dstack.application import Application
 from dstack.handler import EncoderFactory, DecoderFactory, Encoder, FrameData, Decoder
 from dstack.controls import Control, View, Controller, unpack_view
 from dstack.application.dependencies import Dependency, ModuleDependency
@@ -23,8 +24,7 @@ from typing import Any
 
 class AppEncoderFactory(EncoderFactory):
     def accept(self, obj: Any) -> bool:
-        # TODO: Introduce a more reliable way to detect application
-        return isinstance(obj, ty.Callable) and hasattr(obj, "__controls__")
+        return self.is_type(obj, "dstack.application.Application")
 
     def create(self) -> Encoder[Any]:
         return AppEncoder()
@@ -38,7 +38,7 @@ class AppDecoderFactory(DecoderFactory):
         return AppDecoder()
 
 
-class AppEncoder(Encoder[ty.Callable]):
+class AppEncoder(Encoder[Application]):
     def __init__(self, temp_dir: ty.Optional[str] = None, archive: str = "zip",
                  force_serialization: bool = False, _strict_type_check: bool = True):
         super().__init__()
@@ -48,7 +48,7 @@ class AppEncoder(Encoder[ty.Callable]):
         self._strict_type_check = _strict_type_check
         self._copy_controls = True
 
-    def encode(self, obj, description: ty.Optional[str], params: ty.Optional[ty.Dict]) -> FrameData:
+    def encode(self, app, description: ty.Optional[str], params: ty.Optional[ty.Dict]) -> FrameData:
         force_serialization = self._force_serialization
 
         call_stack_frame = inspect.currentframe().f_back
@@ -60,32 +60,32 @@ class AppEncoder(Encoder[ty.Callable]):
             # 2) if obj is defined in the Jupyter notebook obj.__module__ will be equal to "__main__"
             # 3) if push/encode is called from the module where obj is defined we must serialize
             if not module:
-                force_serialization = (obj.__module__ == "__main__")
+                force_serialization = (app.function.__module__ == "__main__")
                 break
-            elif module.__name__ == obj.__module__:
+            elif module.__name__ == app.function.__module__:
                 force_serialization = True
 
             call_stack_frame = call_stack_frame.f_back
 
         if force_serialization:
             deps = []
-            for d in _get_deps(obj):
-                if not (isinstance(d, ModuleDependency) and d.module.__name__ == obj.__module__):
+            for d in _get_deps(app.function):
+                if not (isinstance(d, ModuleDependency) and d.module.__name__ == app.function.__module__):
                     deps.append(d)
         else:
-            deps = _get_deps(obj)
+            deps = _get_deps(app.function)
 
         controls = []
 
         # do some signature analysis here
-        sig = inspect.signature(obj)
-        keys = list(obj.__controls__.keys())
+        sig = inspect.signature(app.function)
+        keys = list(app.controls.keys())
         for p in sig.parameters.values():
             if p.name in keys:
                 if sig.parameters[p.name].annotation != inspect.Parameter.empty:
                     # TODO: Make sure the code is correct and needed
                     (is_optional, tpe) = _split_type(str(p.annotation))
-                    value = obj.__controls__[p.name]
+                    value = app.controls[p.name]
 
                     if isinstance(value, Control):
                         if self._copy_controls:
@@ -107,18 +107,18 @@ class AppEncoder(Encoder[ty.Callable]):
 
         if force_serialization:
             func_filename = "function.pickle"
-            _serialize(_undress(obj), stage_dir / func_filename)
+            _serialize(_undress(app.function), stage_dir / func_filename)
             function_settings = {
                 "type": "pickle",
                 "data": func_filename
             }
-            if obj.__module__ != "__main__":
-                fake_module_path = stage_dir / f"{obj.__module__}.py"
+            if app.function.__module__ != "__main__":
+                fake_module_path = stage_dir / f"{app.function.__module__}.py"
                 fake_module_path.write_text("")
         else:
             function_settings = {
                 "type": "source",
-                "data": f"{obj.__module__}.{obj.__name__}"
+                "data": f"{app.function.__module__}.{app.function.__name__}"
             }
 
         archived = util.create_filename(self._temp_dir)

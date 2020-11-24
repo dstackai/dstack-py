@@ -205,14 +205,15 @@ class TestControls(TestCase):
         c1 = ctrl.TextField("10", id="c1")
         c2 = ctrl.TextField(id="c2", depends=c1, data=update)
 
-        @app(x=c1, y=c2, project=True)
         def test(x: ctrl.Control, y: ctrl.Control):
             return int(x.value()) + int(y.value())
+
+        my_app = app(test, x=c1, y=c2, project=True)
 
         controller = Controller([c1, c2])
         views = controller.list()
         # print(views)
-        self.assertEqual(30, controller.apply(test, views))
+        self.assertEqual(30, controller.apply(my_app.function, views))
 
     def test_title_override(self):
         class Item:
