@@ -99,7 +99,8 @@ class Control(ABC, ty.Generic[V]):
         return len(self._parents) > 0
 
     def is_apply_required(self) -> bool:
-        return self.is_dependent() or self._require_apply
+        # return self.is_dependent() or self._require_apply
+        return self._require_apply
 
     def view(self) -> V:
         self._update()
@@ -244,10 +245,11 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  title: ty.Optional[ty.Callable[[T], str]] = None,
+                 require_apply: bool = True,
                  optional: ty.Optional[bool] = None
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func, False, optional)
+        super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
         self._model = model
         self.selected = selected
@@ -298,9 +300,10 @@ class Slider(Control[SliderView]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 require_apply: bool = True
                  ):
         update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func, False, False)
+        super().__init__(label, id, depends, update_func, require_apply, False)
         self.data = list(data)
         self.selected = selected
 
@@ -407,7 +410,7 @@ class Controller(object):
         has_apply = False
 
         for control in controls:
-            require_apply = control.is_apply_required()
+            require_apply = True if control.is_apply_required() else require_apply
 
             if isinstance(control, Apply):
                 if not has_apply:
