@@ -91,6 +91,7 @@ class Control(ABC, ty.Generic[V]):
             if self._dirty:
                 try:
                     self._update_func(self, *self._parents)
+                    self._check_after_update()
                     self._dirty = False
                 except Exception as e:
                     raise UpdateError(e, self._id)
@@ -119,6 +120,9 @@ class Control(ABC, ty.Generic[V]):
 
     @abstractmethod
     def _apply(self, view: V):
+        pass
+
+    def _check_after_update(self):
         pass
 
     @abstractmethod
@@ -281,6 +285,13 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
         model = self.get_model()
         return model.element(self.selected) if self.selected >= 0 else None
 
+    def _check_after_update(self):
+        model = self.get_model()
+        if model.size() == 0:
+            self.selected = -1
+        elif self.selected >= model.size():
+            self.selected = 0
+
 
 class SliderView(View):
     def __init__(self, id: str, selected: int = 0, data: ty.Optional[ty.List[float]] = None,
@@ -317,6 +328,12 @@ class Slider(Control[SliderView]):
 
     def _value(self) -> ty.Any:
         return self.data[self.selected]
+
+    def _check_after_update(self):
+        if len(self.data) == 0:
+            self.selected = -1
+        elif self.selected >= len(self.data):
+            self.selected = 0
 
 
 class FileUploadView(View):
