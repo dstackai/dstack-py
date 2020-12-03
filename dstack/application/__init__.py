@@ -36,9 +36,6 @@ class Application:
         return result
 
     def decorator(self, func):
-        if hasattr(func, "__decorated__"):
-            func = func.__decorated__
-
         if hasattr(func, "__depends__"):
             func.__depends__ += self.dep()
         else:
@@ -48,10 +45,4 @@ class Application:
             module = sys.modules[func.__module__]
             func.__depends__.append(ModuleDependency(module))
 
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        wrapper.__decorated__ = func
-
-        return wrapper
+        return func

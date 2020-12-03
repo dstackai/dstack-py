@@ -269,7 +269,7 @@ def app(function: Callable, **kwargs):
 
 def default_hash_func(*args, **kwargs):
     if len(kwargs) > 0 or len(args) > 0:
-        return args, kwargs
+        return args, frozenset(kwargs.items())
     else:
         return 0
 

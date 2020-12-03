@@ -129,6 +129,9 @@ class Control(ABC, ty.Generic[V]):
     def _value(self) -> ty.Optional[ty.Any]:
         pass
 
+    def __hash__(self):
+        return hash(self.value())
+
 
 class TextFieldView(View):
     def __init__(self, id: str, data: ty.Optional[str], enabled: ty.Optional[bool] = None,

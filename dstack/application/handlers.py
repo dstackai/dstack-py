@@ -107,7 +107,7 @@ class AppEncoder(Encoder[Application]):
 
         if force_serialization:
             func_filename = "function.pickle"
-            _serialize(_undress(app.function), stage_dir / func_filename)
+            _serialize(app.function, stage_dir / func_filename)
             function_settings = {
                 "type": "pickle",
                 "data": func_filename
@@ -160,10 +160,6 @@ def _type(tpe: str) -> str:
 
 def _get_deps(func: ty.Callable) -> ty.List[Dependency]:
     return func.__depends__ if hasattr(func, "__depends__") else []
-
-
-def _undress(func: ty.Callable) -> ty.Callable:
-    return func.__decorated__ if hasattr(func, "__decorated__") else func
 
 
 def _stage_deps(deps: ty.List[Dependency], root: Path):
