@@ -25,6 +25,15 @@ class StreamWithProgress(IO):
         self.parent = parent
         self.progress = progress
 
+    def mode(self) -> str:
+        return self.parent.mode
+
+    def name(self) -> str:
+        return self.parent.name
+
+    def closed(self) -> bool:
+        return self.parent.closed
+
     def close(self) -> None:
         self.parent.close()
         self.progress.close()
