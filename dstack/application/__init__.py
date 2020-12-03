@@ -4,7 +4,8 @@ import typing as ty
 from functools import wraps
 from pathlib import Path
 
-import dstack.application.dependencies as dp
+from dstack.application.dependencies import Dependency, RequirementsDependency, ProjectDependency, ModuleDependency, \
+    PackageDependency
 
 
 class Application:
@@ -13,24 +14,24 @@ class Application:
         self.kwargs = {k: v for k, v in kwargs.items() if k in ["requirements", "depends", "project"]}
         self.function = self.decorator(function)
 
-    def dep(self) -> ty.List[dp.Dependency]:
+    def dep(self) -> ty.List[Dependency]:
         result = []
 
         requirements = self.kwargs.get("requirements")
         if requirements:
-            result.append(dp.RequirementsDependency(Path(requirements)))
+            result.append(RequirementsDependency(Path(requirements)))
 
         project = self.kwargs.get("project")
         if project:
-            result.append(dp.ProjectDependency())
+            result.append(ProjectDependency())
 
         depends = self.kwargs.get("depends")
         if depends:
             for d in depends:
                 if inspect.ismodule(d):
-                    result.append(dp.ModuleDependency(d))
+                    result.append(ModuleDependency(d))
                 else:
-                    result.append(dp.PackageDependency(d))
+                    result.append(PackageDependency(d))
 
         return result
 
@@ -45,7 +46,7 @@ class Application:
 
         if func.__module__ != "__main__":
             module = sys.modules[func.__module__]
-            func.__depends__.append(dp.ModuleDependency(module))
+            func.__depends__.append(ModuleDependency(module))
 
         @wraps(func)
         def wrapper(*args, **kwargs):
