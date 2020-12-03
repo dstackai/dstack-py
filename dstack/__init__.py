@@ -1,6 +1,6 @@
 import base64
 from typing import Optional, Dict, Any, Callable
-
+from functools import wraps
 from deprecation import deprecated
 
 from dstack.auto import AutoHandler
@@ -265,3 +265,38 @@ def tab(title: Optional[str] = None) -> DecoratedValue:
 
 def app(function: Callable, **kwargs):
     return Application(function, **kwargs)
+
+
+def default_hash_func(*args, **kwargs):
+    if len(kwargs) > 0 or len(args) > 0:
+        return args, kwargs
+    else:
+        return 0
+
+
+def _hash(obj):
+    return hash(obj)
+
+
+def cache(hash_func=default_hash_func):
+    memo = {}
+
+    def decorator(func):
+        func.__hash_func__ = hash_func
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            hash_value = _hash(hash_func(*args, **kwargs))
+
+            try:
+                return memo[(func, hash_value)]
+            except KeyError:
+                rv = func(*args, **kwargs)
+                memo[(func, hash_value)] = rv
+                return rv
+
+        wrapper.__decorated__ = func
+
+        return wrapper
+
+    return decorator
