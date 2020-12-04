@@ -121,7 +121,7 @@ class JsonProtocol(Protocol):
 
         response.raise_for_status()
 
-        return response.json(encoding=self.ENCODING)
+        return response.json()
 
     def download(self, url) -> (IO, int):
         r = requests.get(url, stream=True, verify=self.verify)
