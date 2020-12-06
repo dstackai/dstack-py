@@ -64,7 +64,7 @@ class TestControls(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, data=update, long=True)
         controller = Controller([c1, c2])
         views = controller.list()
         self.assertEqual(3, len(views))  # Apply will appear here
@@ -77,11 +77,13 @@ class TestControls(TestCase):
 
         if isinstance(v1, ctrl.TextFieldView):
             self.assertEqual("10", v1.data)
+            self.assertIsNone(v1.long)
         else:
             self.fail()
 
         if isinstance(v2, ctrl.TextFieldView):
             self.assertEqual("20", v2.data)
+            self.assertIsNotNone(v2.long)
         else:
             self.fail()
 
@@ -91,11 +93,13 @@ class TestControls(TestCase):
 
         if isinstance(v1, ctrl.TextFieldView):
             self.assertEqual("10", v1.data)
+            self.assertIsNone(v1.long)
         else:
             self.fail()
 
         if isinstance(v2, ctrl.TextFieldView):
             self.assertEqual("20", v2.data)
+            self.assertIsNotNone(v2.long)
 
     def test_update_error(self):
         def update(control: ctrl.Control, text_area: ctrl.TextField):

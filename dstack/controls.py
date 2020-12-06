@@ -135,13 +135,17 @@ class Control(ABC, ty.Generic[V]):
 
 
 class TextFieldView(View):
-    def __init__(self, id: str, data: ty.Optional[str], enabled: ty.Optional[bool] = None,
+    def __init__(self, id: str, data: ty.Optional[str], long: ty.Optional[bool], enabled: ty.Optional[bool] = None,
                  label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
         super().__init__(id, enabled, label, optional)
         self.data = data
+        self.long = long
 
     def _pack(self) -> ty.Dict:
-        return {"data": self.data}
+        _dict = {"data": self.data}
+        if self.long:
+            _dict["long"] = True
+        return _dict
 
 
 class CheckBoxView(View):
@@ -169,6 +173,7 @@ def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable],
 class TextField(Control[TextFieldView], ty.Generic[T]):
     def __init__(self,
                  data: ty.Union[ty.Optional[str], ty.Callable] = None,
+                 long: bool = False,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
@@ -178,6 +183,7 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         update_func, data = _update_func_or_data(data)
         super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
+        self.long = long
 
     def _view(self) -> TextFieldView:
         if isinstance(self.data, str):
@@ -186,7 +192,7 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
             data = self.data()
         else:
             data = None
-        return TextFieldView(self._id, data, self.enabled, self.label, self.optional)
+        return TextFieldView(self._id, data, True if self.long else None, self.enabled, self.label, self.optional)
 
     def _apply(self, view: TextFieldView):
         assert isinstance(view, TextFieldView)
@@ -446,19 +452,20 @@ class FileUpload(Control[FileUploadView]):
         return self.stream
 
 
+# TODO: Decode automatically
 def unpack_view(source: ty.Dict) -> View:
     type = source["type"]
     if type == "TextFieldView":
-        return TextFieldView(source["id"], source.get("data"), source.get("enabled"), source.get("label"),
-                             source.get("optional"))
+        return TextFieldView(source["id"], source.get("data"), source.get("long"), source.get("enabled"),
+                             source.get("label"), source.get("optional"))
     if type == "CheckBoxView":
         return CheckBoxView(source["id"], source.get("selected"), source.get("enabled"), source.get("label"),
                             source.get("optional"))
     elif type == "ApplyView":
         return ApplyView(source["id"], source.get("enabled"), source.get("label"), source.get("optional"))
     elif type == "ComboBoxView":
-        return ComboBoxView(source["id"], source.get("selected"), source.get("titles"), source.get("enabled"),
-                            source.get("label"), source.get("optional"))
+        return ComboBoxView(source["id"], source.get("selected"), source.get("titles"), source.get("multiple"),
+                            source.get("enabled"), source.get("label"), source.get("optional"))
     elif type == "SliderView":
         return SliderView(source["id"], source.get("selected"), source.get("data"), source.get("enabled"),
                           source.get("label"))
