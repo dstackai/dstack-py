@@ -143,6 +143,16 @@ class TextFieldView(View):
         return {"data": self.data}
 
 
+class CheckBoxView(View):
+    def __init__(self, id: str, selected: bool, enabled: ty.Optional[bool] = None,
+                 label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
+        super().__init__(id, enabled, label, optional)
+        self.selected = selected
+
+    def _pack(self) -> ty.Dict:
+        return {"selected": self.selected}
+
+
 def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable],
                                            ty.Optional[ty.Any]):
     if isinstance(data, ty.Callable):
@@ -169,7 +179,13 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         self.data = data
 
     def _view(self) -> TextFieldView:
-        return TextFieldView(self._id, self.data, self.enabled, self.label, self.optional)
+        if isinstance(self.data, str):
+            data = self.data
+        elif isinstance(self.data, ty.Callable):
+            data = self.data()
+        else:
+            data = None
+        return TextFieldView(self._id, data, self.enabled, self.label, self.optional)
 
     def _apply(self, view: TextFieldView):
         assert isinstance(view, TextFieldView)
@@ -178,6 +194,35 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
 
     def _value(self) -> ty.Optional[ty.Any]:
         return self.data
+
+
+class CheckBox(Control[CheckBoxView], ty.Generic[T]):
+    def __init__(self,
+                 selected: ty.Union[bool, ty.Callable] = False,
+                 label: ty.Optional[str] = None,
+                 id: ty.Optional[str] = None,
+                 depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
+                 require_apply: bool = True,
+                 optional: ty.Optional[bool] = None
+                 ):
+        update_func, selected = _update_func_or_data(selected)
+        super().__init__(label, id, depends, update_func, require_apply, optional)
+        self.selected = selected
+
+    def _view(self) -> CheckBoxView:
+        if isinstance(self.selected, bool):
+            selected = self.selected
+        elif isinstance(self.selected, ty.Callable):
+            selected = self.selected()
+        return CheckBoxView(self._id, selected, self.enabled, self.label, self.optional)
+
+    def _apply(self, view: CheckBoxView):
+        assert isinstance(view, CheckBoxView)
+        assert self._id == view.id
+        self.selected = view.selected
+
+    def _value(self) -> ty.Optional[ty.Any]:
+        return self.selected
 
 
 class ListModel(ABC, ty.Generic[T]):
@@ -381,6 +426,9 @@ def unpack_view(source: ty.Dict) -> View:
     if type == "TextFieldView":
         return TextFieldView(source["id"], source.get("data"), source.get("enabled"), source.get("label"),
                              source.get("optional"))
+    if type == "CheckBoxView":
+        return CheckBoxView(source["id"], source.get("selected"), source.get("enabled"), source.get("label"),
+                            source.get("optional"))
     elif type == "ApplyView":
         return ApplyView(source["id"], source.get("enabled"), source.get("label"), source.get("optional"))
     elif type == "ComboBoxView":

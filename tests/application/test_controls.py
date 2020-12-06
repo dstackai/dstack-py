@@ -23,6 +23,42 @@ class TestControls(TestCase):
 
         return None
 
+    def test_simple_check_box(self):
+        c1 = ctrl.CheckBox()
+        controller = Controller([c1])
+        views = controller.list()
+        v1 = ty.cast(ctrl.CheckBoxView, self.get_by_id(c1.get_id(), views))
+        self.assertEqual(False, v1.selected)
+
+    def test_callable_check_box(self):
+        def get_selected():
+            return True
+
+        c1 = ctrl.CheckBox(selected=get_selected)
+        controller = Controller([c1])
+        views = controller.list()
+        v1 = ty.cast(ctrl.CheckBoxView, self.get_by_id(c1.get_id(), views))
+        self.assertEqual(True, v1.selected)
+
+    def test_dependant_check_box(self):
+        def get_selected(self: ctrl.CheckBox, c2: ctrl.TextField):
+            self.selected = int(c2.value()) > 5
+
+        c1 = ctrl.TextField("10")
+        c2 = ctrl.CheckBox(selected=get_selected, depends=[c1])
+        controller = Controller([c1, c2])
+        views = controller.list()
+        v1 = ty.cast(ctrl.TextFieldView, self.get_by_id(c1.get_id(), views))
+        v2 = ty.cast(ctrl.CheckBoxView, self.get_by_id(c2.get_id(), views))
+        self.assertEqual("10", v1.data)
+        self.assertEqual(True, v2.selected)
+        v1.data = "5"
+        views = controller.list(views)
+        v1 = ty.cast(ctrl.TextFieldView, self.get_by_id(c1.get_id(), views))
+        v2 = ty.cast(ctrl.CheckBoxView, self.get_by_id(c2.get_id(), views))
+        self.assertEqual("5", v1.data)
+        self.assertEqual(False, v2.selected)
+
     def test_simple_update(self):
         def update(control: ctrl.Control, text_field: ctrl.TextField):
             control.data = str(int(text_field.data) * 2)
