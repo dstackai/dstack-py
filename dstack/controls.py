@@ -49,6 +49,7 @@ class View(ABC):
 V = ty.TypeVar("V", bound=View)
 
 
+# TODO: Move require_apply to ds.app (and Controller)
 class Control(ABC, ty.Generic[V]):
     def __init__(self,
                  label: ty.Optional[str],
@@ -278,21 +279,31 @@ class CallableListModel(AbstractListModel[ty.Callable[[], ty.List[ty.Any]]]):
 
 
 class ComboBoxView(View):
-    def __init__(self, id: str, selected: int, titles: ty.Optional[ty.List[str]] = None,
+    def __init__(self, id: str, selected: ty.Optional[ty.Union[int, ty.List[int]]], titles: ty.Optional[ty.List[str]] = None,
+                 multiple: ty.Optional[bool] = None,
                  enabled: ty.Optional[bool] = None, label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
         super().__init__(id, enabled, label, optional)
         self.titles = titles
         self.selected = selected
+        self.multiple = multiple
 
     def _pack(self) -> ty.Dict:
-        return {"titles": self.titles, "selected": self.selected}
+        _dict = {"titles": self.titles}
+        if self.selected is not None:
+            _dict["selected"] = self.selected
+        if self.multiple:
+            _dict["multiple"] = True
+        return _dict
 
 
+# TODO: Split data into update_func and data
+# TODO: Rename data into items
 class ComboBox(Control[ComboBoxView], ty.Generic[T]):
     def __init__(self,
                  data: ty.Union[T, ty.Callable],
                  model: ty.Optional[ListModel[T]] = None,
-                 selected: int = 0,
+                 selected: ty.Optional[ty.Union[int, list]] = None,
+                 multiple: bool = False,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
@@ -304,8 +315,11 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
         super().__init__(label, id, depends, update_func, require_apply, optional)
         self.data = data
         self._model = model
-        self.selected = selected
+        self.selected = selected or ([] if multiple else 0)
+        self.multiple = multiple
         self.title = title
+        if self.multiple:
+            assert isinstance(self.selected, list)
 
     def _derive_model(self) -> ListModel[ty.Any]:
         if isinstance(self.data, list):
@@ -322,23 +336,34 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
 
     def _view(self) -> ComboBoxView:
         model = self.get_model()
-        return ComboBoxView(self._id, self.selected, model.titles(), self.enabled, self.label, self.optional)
+        return ComboBoxView(self._id, self.selected, model.titles(), True if self.multiple else None, self.enabled, self.label,
+                            self.optional)
 
     def _apply(self, view: ComboBoxView):
         assert isinstance(view, ComboBoxView)
         assert self._id == view.id
+        if self.multiple:
+            assert isinstance(self.selected, list)
         self.selected = view.selected
 
     def _value(self) -> ty.Optional[ty.Any]:
         model = self.get_model()
-        return model.element(self.selected) if self.selected >= 0 else None
+        if self.multiple:
+            return [model.element(s) for s in self.selected]
+        else:
+            return model.element(self.selected) if self.selected >= 0 else None
 
     def _check_after_update(self):
         model = self.get_model()
-        if model.size() == 0:
-            self.selected = -1
-        elif self.selected >= model.size():
-            self.selected = 0
+        if self.multiple:
+            assert isinstance(self.selected, list)
+        if self.multiple:
+            self.selected = [s for s in self.selected if s < model.size()]
+        else:
+            if model.size() == 0:
+                self.selected = None
+            elif self.selected >= model.size():
+                self.selected = 0
 
 
 class SliderView(View):

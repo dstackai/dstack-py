@@ -171,6 +171,43 @@ class TestControls(TestCase):
         self.assertEqual(1, v.selected)
         self.assertEqual(["World 1", "World 2"], v1.titles)
 
+    def test_multiple_combo_box(self):
+        def update(control: ctrl.ComboBox, parent: ctrl.ComboBox):
+            selected = [parent.data[s] for s in parent.selected]
+            control.data = [f"{selected} 1", f"{selected} 2"]
+
+        cb = ctrl.ComboBox(["Hello", "World"], id="cb", multiple=True)
+        self.assertTrue(isinstance(cb._derive_model(), ctrl.DefaultListModel))
+
+        c1 = ctrl.ComboBox(data=update, depends=cb, id="c1")
+        controller = Controller([c1, cb])
+        views = controller.list()
+        v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
+        v1 = ty.cast(ctrl.ComboBoxView, self.get_by_id(c1.get_id(), views))
+
+        self.assertEqual([], v.selected)
+        self.assertEqual(["[] 1", "[] 2"], v1.titles)
+
+        v.selected = [1]
+        print(views)
+        views = controller.list(views)
+        print(views)
+        v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
+        v1 = ty.cast(ctrl.ComboBoxView, self.get_by_id(c1.get_id(), views))
+
+        self.assertEqual([1], v.selected)
+        self.assertEqual(["['World'] 1", "['World'] 2"], v1.titles)
+
+        v.selected = [0, 1]
+        print(views)
+        views = controller.list(views)
+        print(views)
+        v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
+        v1 = ty.cast(ctrl.ComboBoxView, self.get_by_id(c1.get_id(), views))
+
+        self.assertEqual([0, 1], v.selected)
+        self.assertEqual(["['Hello', 'World'] 1", "['Hello', 'World'] 2"], v1.titles)
+
     def test_combo_box_callable_model(self):
         class City:
             def __init__(self, id, title):
