@@ -105,6 +105,7 @@ class Control(ABC, ty.Generic[V]):
         return self._require_apply
 
     def view(self) -> V:
+        self._check_pickle()
         self._update()
         return self._view()
 
@@ -128,6 +129,9 @@ class Control(ABC, ty.Generic[V]):
 
     @abstractmethod
     def _value(self) -> ty.Optional[ty.Any]:
+        pass
+
+    def _check_pickle(self):
         pass
 
     def __hash__(self):
@@ -201,6 +205,10 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
 
     def _value(self) -> ty.Optional[ty.Any]:
         return self.data
+
+    def _check_pickle(self):
+        if not hasattr(self, 'long'):
+            self.long = None
 
 
 class CheckBox(Control[CheckBoxView], ty.Generic[T]):
@@ -370,6 +378,10 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                 self.selected = None
             elif self.selected >= model.size():
                 self.selected = 0
+
+    def _check_pickle(self):
+        if not hasattr(self, 'multiple'):
+            self.multiple = False
 
 
 class SliderView(View):
