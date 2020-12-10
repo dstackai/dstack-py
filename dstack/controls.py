@@ -365,7 +365,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
         if self.multiple:
             return [model.element(s) for s in self.selected]
         else:
-            return model.element(self.selected) if self.selected >= 0 else None
+            return model.element(self.selected) if self.selected is not None and self.selected >= 0 else None
 
     def _check_after_update(self):
         model = self.get_model()
@@ -374,10 +374,11 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
         if self.multiple:
             self.selected = [s for s in self.selected if s < model.size()]
         else:
-            if model.size() == 0:
-                self.selected = None
-            elif self.selected >= model.size():
-                self.selected = 0
+            if self.selected is not None:
+                if model.size() == 0:
+                    self.selected = None
+                elif self.selected >= model.size():
+                    self.selected = 0
 
     def _check_pickle(self):
         if not hasattr(self, 'multiple'):
@@ -476,7 +477,14 @@ def unpack_view(source: ty.Dict) -> View:
     elif type == "ApplyView":
         return ApplyView(source["id"], source.get("enabled"), source.get("label"), source.get("optional"))
     elif type == "ComboBoxView":
-        return ComboBoxView(source["id"], source.get("selected"), source.get("titles"), source.get("multiple"),
+        selected = source.get("selected")
+        multiple = source.get("multiple")
+        if multiple:
+            if selected is None:
+                selected = []
+            elif isinstance(selected, int):
+                selected = [selected]
+        return ComboBoxView(source["id"], selected, source.get("titles"), multiple,
                             source.get("enabled"), source.get("label"), source.get("optional"))
     elif type == "SliderView":
         return SliderView(source["id"], source.get("selected"), source.get("data"), source.get("enabled"),
