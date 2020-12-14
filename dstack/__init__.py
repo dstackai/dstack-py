@@ -12,6 +12,7 @@ from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameMeta
 from dstack.application import Application
+from dstack.util import flash_cache
 
 
 def push(stack: str, obj, description: Optional[str] = None,
@@ -223,7 +224,7 @@ def pull_data(context: Context,
 
 
 # TODO: Support frame and attach_index
-# TODO: Support caching
+@flash_cache()
 def pull(stack: str,
          profile: str = "default",
          params: Optional[Dict] = None,
