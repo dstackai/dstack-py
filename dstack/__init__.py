@@ -12,7 +12,6 @@ from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
 from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_none, FrameData, PushResult, FrameMeta
 from dstack.application import Application
-from dstack.util import flash_cache
 
 
 def push(stack: str, obj, description: Optional[str] = None,
@@ -217,6 +216,7 @@ def pull_data(context: Context,
     data = \
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
             StreamContent(*context.protocol.download(attach["download_url"]))
+    # FIXME: attach["download_url"] doesnt exist
 
     media_type = MediaType(attach["content_type"], attach.get("application", None))
     return FrameData(data, media_type, attach.get("description", None),
@@ -224,7 +224,6 @@ def pull_data(context: Context,
 
 
 # TODO: Support frame and attach_index
-@flash_cache()
 def pull(stack: str,
          profile: str = "default",
          params: Optional[Dict] = None,

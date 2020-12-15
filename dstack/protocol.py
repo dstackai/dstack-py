@@ -7,6 +7,9 @@ import requests
 import dstack.logger as log
 from dstack.config import Profile
 from dstack.content import Content
+from dstack.util import HOME_CACHE_DIR
+from os import path
+from pathlib import Path
 
 
 class MatchError(ValueError):
@@ -87,7 +90,35 @@ class JsonProtocol(Protocol):
             if (len(attachments) == 1 and empty) or set(attach["params"].items()) == set(params.items()):
                 frame = res["stack"]["head"]["id"]
                 attach_url = f"/attachs/{stack}/{frame}/{index}?download=true"
-                return self.do_request(attach_url, None, token=token, method="GET")
+
+                path_to_file = Path(path.join(HOME_CACHE_DIR, f"attachs/{stack}/{frame}/{index}"))
+                dict_filename = 'dict'
+                data_filename = 'data'
+
+                full_path_to_dict_file = path.join(path_to_file, dict_filename)
+                full_path_to_data_file = path.join(path_to_file, data_filename)
+
+                is_cached = path.isfile(full_path_to_dict_file)
+                if is_cached:
+                    res = dict()
+                    with open(full_path_to_dict_file, 'r') as f:
+                        res['attachment'] = json.load(f)
+                    with open(full_path_to_data_file, 'r') as f:
+                        res['attachment']['data'] = f.read()
+
+                else:
+                    res = self.do_request(attach_url, None, token=token, method="GET")
+
+                    path_to_file.mkdir(parents=True, exist_ok=True)
+                    data = res.get('attachment').pop('data')
+                    with open(full_path_to_data_file, 'w') as f:
+                        f.write(data)
+                    with open(full_path_to_dict_file, 'w') as f:
+                        json.dump(res.get('attachment'), f)
+                    res['attachment']['data'] = data
+
+                return res
+
         raise MatchError(params)
 
     def do_request(self, endpoint: str, data: Optional[Dict],
