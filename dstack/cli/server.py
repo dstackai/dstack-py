@@ -15,6 +15,8 @@ def update(args: Namespace):
 
 def start(args: Namespace):
     srv = Installer(verify=not args.no_verify)
+    if not args.skip_update_check:
+        srv.update()
     java = srv.find_jdk()
     jar = srv.jar_path()
 
@@ -22,9 +24,6 @@ def start(args: Namespace):
         srv.update()
         java = srv.find_jdk()
         jar = srv.jar_path()
-    else:
-        if not args.skip_update_check and srv.check_for_updates():
-            print("Newer server version is available, type the following command to update: \n\tdstack server update\n")
 
     cmd = [java.path(), "-jar", jar]
 
