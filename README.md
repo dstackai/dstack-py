@@ -5,7 +5,7 @@
 Installing and running `dstack` is very easy:
 
 ```bash
-pip install dstack
+pip install --index-url https://test.pypi.org/simple/ --upgrade --no-cache-dir --extra-index-url=https://pypi.org/simple/ dstack==0.6dev17
 dstack server start
 ```
 
@@ -22,7 +22,11 @@ To access `dstack`, click the URL provided in the output. If you try to access `
 
 For more details on how to install and run `dstack`, please check the [Installation](https://docs.dstack.ai/v/0.6.x/installation) documentation page.
 
-If you open the URL, you'll be logged as the `dstack` user. The page you'll see is `Applications`. It shows you all published applications which you have access to. The sidebar on the left lets you open other pages: `ML Models`, `Settings`, `Documentation`, and `Chat`.
+If you open the URL, you'll see the following interface:
+
+![](https://gblobscdn.gitbook.com/assets%2F-LyOZaAwuBdBTEPqqlZy%2F-MOewQku261UjWNNtZlD%2F-MOf1w71RF9T9eZkwteB%2FScreenshot%202020-12-16%20at%2011.14.23.png)
+
+You'll be logged as the `dstack` user. The page you'll see is `Applications`. It shows you all published applications which you have access to. The sidebar on the left lets you open other pages: `ML Models`, `Settings`, `Documentation`, and `Chat`.
 
 ## Minimal Application
 
@@ -62,10 +66,6 @@ To learn about how this application works and to see other examples, please chec
 To learn in more detail about what applications consist of and how to use all their features, check out the [Applications](https://docs.dstack.ai/v/0.6.x/applications) documentation page.
 
 Wanna know how to deploy ML models and use them from applications? Read the [ML Models](https://docs.dstack.ai/v/0.6.x/ml-models) page.
-
----
-
-If you use proxy it would be useful to disable SSL certificate check. To do that use `--no-verify` option for selected profile in command line.
 
 ## Feedback
 
