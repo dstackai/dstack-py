@@ -11,12 +11,7 @@ from uuid import uuid4
 from dstack import pull_data, create_context
 from dstack.config import Profile, from_yaml_file, API_SERVER, Config, _get_config_path, configure
 from dstack.handler import FrameData
-
-
-def version_to_int(version: str) -> int:
-    parts = [int(x, 10) for x in version.split('.')]
-    parts.reverse()
-    return sum(x * (10 ** i) for i, x in enumerate(parts))
+from packaging.version import parse as parse_version
 
 
 class Java(object):
@@ -100,9 +95,7 @@ class Installer(object):
         if not current_version:
             return True
 
-        new = version_to_int(new_version)
-        current = version_to_int(current_version)
-        return new > current
+        return parse_version(new_version) > parse_version(current_version)
 
     def _is_jdk_version_compatible(self, compatible_versions: List[str]) -> bool:
         java = self.find_jdk()

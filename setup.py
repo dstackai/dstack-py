@@ -29,6 +29,7 @@ setup(
         "pyyaml>=5.1",
         "requests",
         "deprecation",
+        "packaging",
         "tqdm",
         "cloudpickle"
     ],
