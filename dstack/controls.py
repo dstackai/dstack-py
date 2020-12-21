@@ -22,7 +22,7 @@ class UpdateError(RuntimeError):
         return str(self.error)
 
 
-T = ty.TypeVar("T")
+T = ty.TypeVar("T", bound=list)
 
 
 class View(ABC):
@@ -49,13 +49,12 @@ class View(ABC):
 V = ty.TypeVar("V", bound=View)
 
 
-# TODO: Move require_apply to ds.app (and Controller)
 class Control(ABC, ty.Generic[V]):
     def __init__(self,
                  label: ty.Optional[str],
                  id: ty.Optional[str],
                  depends: ty.Optional[ty.Union[ty.List['Control'], 'Control']],
-                 update_func: ty.Optional[ty.Callable],
+                 handler: ty.Optional[ty.Callable[..., None]],
                  require_apply: bool,
                  optional: ty.Optional[bool]
                  ):
@@ -64,7 +63,7 @@ class Control(ABC, ty.Generic[V]):
 
         self._id = id or str(uuid4())
         self._parents = depends or []
-        self._update_func = update_func
+        self._handler = handler
         self._require_apply = require_apply
         self.optional = optional
         self._pending_view: ty.Optional[V] = None
@@ -85,13 +84,13 @@ class Control(ABC, ty.Generic[V]):
             self._pending_view = None
             self._dirty = True
 
-        if self._update_func:
+        if self._handler:
             for p in self._parents:
                 p._update()
 
             if self._dirty:
                 try:
-                    self._update_func(self, *self._parents)
+                    self._handler(self, *self._parents)
                     self._check_after_update()
                     self._dirty = False
                 except Exception as e:
@@ -132,7 +131,8 @@ class Control(ABC, ty.Generic[V]):
         pass
 
     def _check_pickle(self):
-        pass
+        if hasattr(self, '_update_func'):
+            self._handler = getattr(self, '_update_func')
 
     def __hash__(self):
         return hash(self.value())
@@ -162,21 +162,10 @@ class CheckBoxView(View):
         return {"selected": self.selected}
 
 
-def _update_func_or_data(data: ty.Any) -> (ty.Optional[ty.Callable],
-                                           ty.Optional[ty.Any]):
-    if isinstance(data, ty.Callable):
-        sig = signature(data)
-        if len(sig.parameters) > 1:
-            return data, None
-        else:
-            return None, data
-    else:
-        return None, data
-
-
 class TextField(Control[TextFieldView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Union[ty.Optional[str], ty.Callable] = None,
+                 data: ty.Union[ty.Optional[str], ty.Callable[[], str]] = None,
+                 handler: ty.Optional[ty.Callable[..., None]] = None,
                  long: bool = False,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
@@ -184,8 +173,7 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
                  require_apply: bool = True,
                  optional: ty.Optional[bool] = None
                  ):
-        update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func, require_apply, optional)
+        super().__init__(label, id, depends, handler, require_apply, optional)
         self.data = data
         self.long = long
 
@@ -207,21 +195,22 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
         return self.data
 
     def _check_pickle(self):
+        super()._check_pickle()
         if not hasattr(self, 'long'):
             self.long = None
 
 
 class CheckBox(Control[CheckBoxView], ty.Generic[T]):
     def __init__(self,
-                 selected: ty.Union[bool, ty.Callable] = False,
+                 selected: ty.Union[bool, ty.Callable[[], bool]] = False,
+                 handler: ty.Optional[ty.Callable[..., None]] = None,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  require_apply: bool = True,
                  optional: ty.Optional[bool] = None
                  ):
-        update_func, selected = _update_func_or_data(selected)
-        super().__init__(label, id, depends, update_func, require_apply, optional)
+        super().__init__(label, id, depends, handler, require_apply, optional)
         self.selected = selected
 
     def _view(self) -> CheckBoxView:
@@ -310,11 +299,11 @@ class ComboBoxView(View):
         return _dict
 
 
-# TODO: Split data into update_func and data
 # TODO: Rename data into items
 class ComboBox(Control[ComboBoxView], ty.Generic[T]):
     def __init__(self,
-                 data: ty.Union[T, ty.Callable],
+                 data: ty.Union[ty.Optional[T], ty.Callable[[], T]] = None,
+                 handler: ty.Optional[ty.Callable[..., None]] = None,
                  model: ty.Optional[ListModel[T]] = None,
                  selected: ty.Optional[ty.Union[int, list]] = None,
                  multiple: bool = False,
@@ -325,8 +314,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  require_apply: bool = False,
                  optional: ty.Optional[bool] = None
                  ):
-        update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func, require_apply, optional)
+        super().__init__(label, id, depends, handler, require_apply, optional)
         self.data = data
         self._model = model
         self.selected = selected or ([] if multiple else 0)
@@ -381,6 +369,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                     self.selected = 0
 
     def _check_pickle(self):
+        super()._check_pickle()
         if not hasattr(self, 'multiple'):
             self.multiple = False
 
@@ -399,14 +388,14 @@ class SliderView(View):
 class Slider(Control[SliderView]):
     def __init__(self,
                  data: ty.Union[ty.Iterable[float], ty.Callable],
+                 handler: ty.Optional[ty.Callable[..., None]] = None,
                  selected: int = 0,
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  require_apply: bool = True
                  ):
-        update_func, data = _update_func_or_data(data)
-        super().__init__(label, id, depends, update_func, require_apply, False)
+        super().__init__(label, id, depends, handler, require_apply, False)
         self.data = list(data)
         self.selected = selected
 
@@ -445,10 +434,10 @@ class FileUpload(Control[FileUploadView]):
                  label: ty.Optional[str] = None,
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
-                 update_func: ty.Optional[ty.Callable[[Control, ty.List[Control]], None]] = None,
+                 handler: ty.Optional[ty.Callable[..., None]] = None,
                  optional: ty.Optional = None
                  ):
-        super().__init__(label, id, depends, update_func, True, optional)
+        super().__init__(label, id, depends, handler, True, optional)
         self.is_text = is_text
         self.stream: ty.Optional[ty.IO] = None
 

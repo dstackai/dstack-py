@@ -45,7 +45,7 @@ class TestControls(TestCase):
             self.selected = int(c2.value()) > 5
 
         c1 = ctrl.TextField("10")
-        c2 = ctrl.CheckBox(selected=get_selected, depends=[c1])
+        c2 = ctrl.CheckBox(handler=get_selected, depends=[c1])
         controller = Controller([c1, c2])
         views = controller.list()
         v1 = ty.cast(ctrl.TextFieldView, self.get_by_id(c1.get_id(), views))
@@ -64,7 +64,7 @@ class TestControls(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update, long=True)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update, long=True)
         controller = Controller([c1, c2])
         views = controller.list()
         self.assertEqual(3, len(views))  # Apply will appear here
@@ -106,7 +106,7 @@ class TestControls(TestCase):
             raise ValueError()
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update)
 
         controller = Controller([c1, c2])
 
@@ -116,7 +116,7 @@ class TestControls(TestCase):
         except ctrl.UpdateError as e:
             self.assertEqual(c2.get_id(), e.id)
 
-    def test_update_func_called_only_once(self):
+    def test_handler_called_only_once(self):
         count = 0
 
         def update_c2(control: ctrl.Control, text_area: ctrl.TextField):
@@ -133,9 +133,9 @@ class TestControls(TestCase):
             control.data = str(int(text_area.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update_c2)
-        c3 = ctrl.TextField(id="c3", depends=c2, data=update_c3_c4)
-        c4 = ctrl.TextField(id="c4", depends=c2, data=update_c3_c4)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update_c2)
+        c3 = ctrl.TextField(id="c3", depends=c2, handler=update_c3_c4)
+        c4 = ctrl.TextField(id="c4", depends=c2, handler=update_c3_c4)
 
         controller = Controller([c1, c2, c3, c4])
         views = controller.list()
@@ -156,7 +156,7 @@ class TestControls(TestCase):
         cb = ctrl.ComboBox(["Hello", "World"], id="cb")
         self.assertTrue(isinstance(cb._derive_model(), ctrl.DefaultListModel))
 
-        c1 = ctrl.ComboBox(data=update, depends=cb, id="c1")
+        c1 = ctrl.ComboBox(handler=update, depends=cb, id="c1")
         controller = Controller([c1, cb])
         views = controller.list()
         v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
@@ -183,7 +183,7 @@ class TestControls(TestCase):
         cb = ctrl.ComboBox(["Hello", "World"], id="cb", multiple=True)
         self.assertTrue(isinstance(cb._derive_model(), ctrl.DefaultListModel))
 
-        c1 = ctrl.ComboBox(data=update, depends=cb, id="c1")
+        c1 = ctrl.ComboBox(handler=update, depends=cb, id="c1")
         controller = Controller([c1, cb])
         views = controller.list()
         v = ty.cast(ctrl.ComboBoxView, self.get_by_id(cb.get_id(), views))
@@ -245,7 +245,7 @@ class TestControls(TestCase):
         countries = ctrl.ComboBox(list_countries_from_db, id="countries")
         self.assertTrue(isinstance(countries._derive_model(), ctrl.CallableListModel))
 
-        cities = ctrl.ComboBox(data=update_cities, id="cities", depends=countries)
+        cities = ctrl.ComboBox(handler=update_cities, id="cities", depends=countries)
         controller = Controller([countries, cities])
         views = controller.list()
         v1 = ty.cast(ctrl.ComboBoxView, self.get_by_id(countries.get_id(), views))
@@ -280,7 +280,7 @@ class TestControls(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update)
 
         def test(x: ctrl.Control, y: ctrl.Control):
             return int(x.value()) + int(y.value())
