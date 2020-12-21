@@ -1,7 +1,7 @@
 import typing as ty
 from abc import ABC, abstractmethod
-from inspect import signature
 from uuid import uuid4
+from copy import copy
 
 
 class ValidationError(ValueError):
@@ -338,7 +338,8 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
 
     def _view(self) -> ComboBoxView:
         model = self.get_model()
-        return ComboBoxView(self._id, self.selected, model.titles(), True if self.multiple else None, self.enabled, self.label,
+        return ComboBoxView(self._id, self.selected, model.titles(), True if self.multiple else None, self.enabled,
+                            self.label,
                             self.optional)
 
     def _apply(self, view: ComboBoxView):
@@ -496,7 +497,7 @@ class Apply(Control[ApplyView]):
     def _view(self) -> ApplyView:
         enabled = True
 
-        for control in self.controller.map.values():
+        for control in self.controller.copy_of_controls_by_id.values():
             if control._id != self.get_id() and (not control.optional and control.value() is None):
                 enabled = False
                 break
@@ -513,7 +514,8 @@ class Apply(Control[ApplyView]):
 
 class Controller(object):
     def __init__(self, controls: ty.List[Control]):
-        self.map: ty.Dict[str, Control] = {}
+        self.controls_by_id: ty.Dict[str, Control] = {}
+        self.copy_of_controls_by_id = None
 
         require_apply = False
         has_apply = False
@@ -528,27 +530,61 @@ class Controller(object):
                 else:
                     raise ValueError("Apply must appear only once")
 
-            self.map[control.get_id()] = control
+            self.controls_by_id[control.get_id()] = control
 
         if require_apply and not has_apply:
             apply = Apply()
             apply.controller = self
-            self.map[apply.get_id()] = apply
+            self.controls_by_id[apply.get_id()] = apply
 
         self._ids = [x.get_id() for x in controls]
+
+    def copy_controls_by_id(self) -> ty.Dict:
+        map_copy = dict(self.controls_by_id)
+
+        for c_id in self._ids:
+            map_copy[c_id] = copy(map_copy[c_id])
+
+        for c in map_copy.values():
+            for i in range(len(c._parents)):
+                c._parents[i] = map_copy[c._parents[i]._id]
+
+        return map_copy
 
     def list(self, views: ty.Optional[ty.List[View]] = None) -> ty.List[View]:
         views = views or []
 
-        for view in views:
-            self.map[view.id].apply(view)
+        self.copy_of_controls_by_id = self.copy_controls_by_id()
 
-        return [c.view() for c in self.map.values()]
+        for view in views:
+            self.copy_of_controls_by_id[view.id].apply(view)
+        values = [c.view() for c in self.copy_of_controls_by_id.values()]
+
+        self.copy_of_controls_by_id = None
+
+        return values
 
     def apply(self, func: ty.Callable, views: ty.List[View]) -> ty.Any:
-        for view in views:
-            self.map[view.id].apply(view)
+        self.copy_of_controls_by_id = self.copy_controls_by_id()
 
-        values = [self.map[c_id] for c_id in self._ids]
+        for view in views:
+            control = self.copy_of_controls_by_id[view.id]
+            control.apply(view)
+            control._update()
+
+        values = [self.copy_of_controls_by_id[c_id] for c_id in self._ids]
+
+        self.copy_of_controls_by_id = None
 
         return func(*values)
+
+    def _check_pickle(self):
+        if hasattr(self, 'map'):
+            self.controls_by_id = getattr(self, 'map')
+
+    def init(self):
+        self._check_pickle()
+
+        for c in self.controls_by_id.values():
+            for i in range(len(c._parents)):
+                c._parents[i] = self.controls_by_id[c._parents[i]._id]

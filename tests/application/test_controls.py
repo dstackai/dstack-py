@@ -212,6 +212,17 @@ class TestControls(TestCase):
         self.assertEqual([0, 1], v.selected)
         self.assertEqual(["['Hello', 'World'] 1", "['Hello', 'World'] 2"], v1.titles)
 
+    def test_immutability_of_controller(self):
+        text_field = ctrl.TextField(data="Some initial data")
+        controller = Controller([text_field])
+        views = controller.list()
+        self.assertEqual(views[0].data, "Some initial data")
+        views[0].data = "Some other data"
+        updated_views = controller.list(views)
+        self.assertEqual(updated_views[0].data, "Some other data")
+        views = controller.list()
+        self.assertEqual(views[0].data, "Some initial data")
+
     def test_combo_box_callable_model(self):
         class City:
             def __init__(self, id, title):
