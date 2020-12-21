@@ -139,8 +139,8 @@ class Control(ABC, ty.Generic[V]):
 
 
 class TextFieldView(View):
-    def __init__(self, id: str, data: ty.Optional[str], long: ty.Optional[bool], enabled: ty.Optional[bool] = None,
-                 label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
+    def __init__(self, id: str, data: ty.Optional[str], long: ty.Optional[bool] = None,
+                 enabled: ty.Optional[bool] = None, label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
         super().__init__(id, enabled, label, optional)
         self.data = data
         self.long = long
@@ -293,8 +293,8 @@ class CallableListModel(AbstractListModel[ty.Callable[[], ty.List[ty.Any]]]):
 
 
 class ComboBoxView(View):
-    def __init__(self, id: str, selected: ty.Optional[ty.Union[int, ty.List[int]]], titles: ty.Optional[ty.List[str]] = None,
-                 multiple: ty.Optional[bool] = None,
+    def __init__(self, id: str, selected: ty.Optional[ty.Union[int, ty.List[int]]],
+                 titles: ty.Optional[ty.List[str]] = None, multiple: ty.Optional[bool] = None,
                  enabled: ty.Optional[bool] = None, label: ty.Optional[str] = None, optional: ty.Optional[bool] = None):
         super().__init__(id, enabled, label, optional)
         self.titles = titles
@@ -322,7 +322,7 @@ class ComboBox(Control[ComboBoxView], ty.Generic[T]):
                  id: ty.Optional[str] = None,
                  depends: ty.Optional[ty.Union[ty.List[Control], Control]] = None,
                  title: ty.Optional[ty.Callable[[T], str]] = None,
-                 require_apply: bool = True,
+                 require_apply: bool = False,
                  optional: ty.Optional[bool] = None
                  ):
         update_func, data = _update_func_or_data(data)
