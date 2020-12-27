@@ -31,12 +31,11 @@ class TestApp(TestCase):
         def dispose(self):
             shutil.rmtree(str(self.path))
 
-        def run_script(self, cmd: ty.List[str], working_directory: Path) -> str:
-            os.chdir(working_directory)
+        def run_script(self, cmd: ty.List[str], working_directory: Path) -> ty.Tuple[str, str]:
             python = self.path / "bin" / "python"
             result = subprocess.run([str(python)] + cmd, cwd=working_directory, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
-            return result.stdout.decode()
+            return result.stdout.decode(), result.stderr.decode()
 
         def pip_install(self, path: Path):
             pip = self.path / "bin" / "pip"
@@ -96,7 +95,8 @@ class TestApp(TestCase):
         """
         test_file = Path(app_dir) / "test_script.py"
         test_file.write_text(dedent(test_script).lstrip())
-        output = env.run_script(["test_script.py"], app_dir)
+        output, error = env.run_script(["test_script.py"], app_dir)
+        self.assertEqual("", error)
         self.assertEqual("Here is bar!\nHere is foo!\nMy app: x=10 y=20\n", output)
         env.dispose()
         shutil.rmtree(base_dir)
@@ -149,7 +149,8 @@ class TestApp(TestCase):
         test_file = Path(app_dir) / "test_script.py"
         test_file.write_text(dedent(test_script).lstrip())
 
-        output = env.run_script(["test_script.py"], app_dir)
+        output, error = env.run_script(["test_script.py"], app_dir)
+        self.assertEqual("", error)
         self.assertEqual("Here is bar!\nHere is foo!\nbaz\n", output)
         env.dispose()
 

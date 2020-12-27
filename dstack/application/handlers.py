@@ -38,6 +38,18 @@ class AppDecoderFactory(DecoderFactory):
         return AppDecoder()
 
 
+def _create_fake_module(module_name, stage_dir):
+    fake_module_path_tokens = module_name.split(".")
+    fake_module_name = fake_module_path_tokens[-1]
+    fake_module_dir = stage_dir
+    for fake_package in fake_module_path_tokens[:-1]:
+        fake_package_path = fake_module_dir / fake_package
+        fake_package_path.mkdir()
+        fake_module_dir = fake_package_path
+    fake_module_path = fake_module_dir / f"{fake_module_name}.py"
+    fake_module_path.write_text("")
+
+
 class AppEncoder(Encoder[Application]):
     def __init__(self, temp_dir: ty.Optional[str] = None, archive: str = "zip",
                  force_serialization: bool = False, _strict_type_check: bool = True):
@@ -113,8 +125,7 @@ class AppEncoder(Encoder[Application]):
                 "data": func_filename
             }
             if app.handler.__module__ != "__main__":
-                fake_module_path = stage_dir / f"{app.handler.__module__}.py"
-                fake_module_path.write_text("")
+                _create_fake_module(app.handler.__module__, stage_dir)
         else:
             function_settings = {
                 "type": "source",
