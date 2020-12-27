@@ -60,7 +60,7 @@ class TestApp(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update)
 
         my_app = app(test_app, x=c1, y=c2, requirements="tests/application/test_requirements.txt",
                      depends=["deprecation", "PyYAML==5.3.1", "tests.application.test_package"])
@@ -109,7 +109,7 @@ class TestApp(TestCase):
             print("baz")
 
         c1 = ctrl.TextField("10", id="c1")
-        c2 = ctrl.TextField(id="c2", depends=c1, data=update)
+        c2 = ctrl.TextField(id="c2", depends=c1, handler=update)
 
         def my_func(x: ctrl.TextField, y: ctrl.TextField):
             foo()

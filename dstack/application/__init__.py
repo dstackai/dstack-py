@@ -1,7 +1,6 @@
 import inspect
 import sys
 import typing as ty
-from functools import wraps
 from pathlib import Path
 
 from dstack.application.dependencies import Dependency, RequirementsDependency, ProjectDependency, ModuleDependency, \
@@ -9,10 +8,10 @@ from dstack.application.dependencies import Dependency, RequirementsDependency, 
 
 
 class Application:
-    def __init__(self, function, **kwargs):
+    def __init__(self, handler, **kwargs):
         self.controls = {k: v for k, v in kwargs.items() if k not in ["requirements", "depends", "project"]}
         self.kwargs = {k: v for k, v in kwargs.items() if k in ["requirements", "depends", "project"]}
-        self.function = self.decorator(function)
+        self.handler = self.decorator(handler)
 
     def dep(self) -> ty.List[Dependency]:
         result = []

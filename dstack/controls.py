@@ -200,6 +200,7 @@ class TextField(Control[TextFieldView], ty.Generic[T]):
             self.long = None
 
 
+# TODO: remove require_apply and optional
 class CheckBox(Control[CheckBoxView], ty.Generic[T]):
     def __init__(self,
                  selected: ty.Union[bool, ty.Callable[[], bool]] = False,

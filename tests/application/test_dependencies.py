@@ -25,12 +25,12 @@ class TestDependencies(TestCase):
             control.data = str(int(text_field.data) * 2)
 
         c1 = TextField("10", id="c1")
-        c2 = TextField(id="c2", depends=c1, data=update)
+        c2 = TextField(id="c2", depends=c1, handler=update)
 
         my_app = app(test_app, x=c1, y=c2, requirements="tests/application/test_requirements.txt",
                      depends=["deprecation", "PyYAML==5.3.1", "tests.application.test_package"])
 
-        deps = _get_deps(my_app.function)
+        deps = _get_deps(my_app.handler)
         print(deps)
         stage_dir = self._get_temp_dir("stage1")
         print(stage_dir)

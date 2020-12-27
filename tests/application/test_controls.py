@@ -301,7 +301,7 @@ class TestControls(TestCase):
         controller = Controller([c1, c2])
         views = controller.list()
         # print(views)
-        self.assertEqual(30, controller.apply(my_app.function, views))
+        self.assertEqual(30, controller.apply(my_app.handler, views))
 
     def test_title_override(self):
         class Item:

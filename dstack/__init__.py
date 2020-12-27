@@ -263,8 +263,8 @@ def tab(title: Optional[str] = None) -> DecoratedValue:
     return Tab(title)
 
 
-def app(function: Callable, **kwargs):
-    return Application(function, **kwargs)
+def app(handler: Callable, **kwargs):
+    return Application(handler, **kwargs)
 
 
 def default_hash_func(*args, **kwargs):

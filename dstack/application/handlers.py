@@ -60,25 +60,25 @@ class AppEncoder(Encoder[Application]):
             # 2) if obj is defined in the Jupyter notebook obj.__module__ will be equal to "__main__"
             # 3) if push/encode is called from the module where obj is defined we must serialize
             if not module:
-                force_serialization = (app.function.__module__ == "__main__")
+                force_serialization = (app.handler.__module__ == "__main__")
                 break
-            elif module.__name__ == app.function.__module__:
+            elif module.__name__ == app.handler.__module__:
                 force_serialization = True
 
             call_stack_frame = call_stack_frame.f_back
 
         if force_serialization:
             deps = []
-            for d in _get_deps(app.function):
-                if not (isinstance(d, ModuleDependency) and d.module.__name__ == app.function.__module__):
+            for d in _get_deps(app.handler):
+                if not (isinstance(d, ModuleDependency) and d.module.__name__ == app.handler.__module__):
                     deps.append(d)
         else:
-            deps = _get_deps(app.function)
+            deps = _get_deps(app.handler)
 
         controls = []
 
         # do some signature analysis here
-        sig = inspect.signature(app.function)
+        sig = inspect.signature(app.handler)
         keys = list(app.controls.keys())
         for p in sig.parameters.values():
             if p.name in keys:
@@ -107,18 +107,18 @@ class AppEncoder(Encoder[Application]):
 
         if force_serialization:
             func_filename = "function.pickle"
-            _serialize(app.function, stage_dir / func_filename)
+            _serialize(app.handler, stage_dir / func_filename)
             function_settings = {
                 "type": "pickle",
                 "data": func_filename
             }
-            if app.function.__module__ != "__main__":
-                fake_module_path = stage_dir / f"{app.function.__module__}.py"
+            if app.handler.__module__ != "__main__":
+                fake_module_path = stage_dir / f"{app.handler.__module__}.py"
                 fake_module_path.write_text("")
         else:
             function_settings = {
                 "type": "source",
-                "data": f"{app.function.__module__}.{app.function.__name__}"
+                "data": f"{app.handler.__module__}.{app.handler.__name__}"
             }
 
         archived = util.create_filename(self._temp_dir)
