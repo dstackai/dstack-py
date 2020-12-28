@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -104,7 +105,7 @@ class TestApp(TestCase):
         test_file.write_text(dedent(test_script).lstrip())
         output, error = env.run_script(["test_script.py"], app_dir)
         self.assertEqual("", error)
-        self.assertEqual("Here is bar!\nHere is foo!\nMy app: x=10 y=20\n", output)
+        self.assertEqual(f"Here is bar!{os.linesep}Here is foo!{os.linesep}My app: x=10 y=20{os.linesep}", output)
         env.dispose()
         shutil.rmtree(base_dir)
 
@@ -158,7 +159,7 @@ class TestApp(TestCase):
 
         output, error = env.run_script(["test_script.py"], app_dir)
         self.assertEqual("", error)
-        self.assertEqual("Here is bar!\nHere is foo!\nbaz\n", output)
+        self.assertEqual(f"Here is bar!{os.linesep}Here is foo!{os.linesep}baz{os.linesep}", output)
         env.dispose()
 
         shutil.rmtree(base_dir)
