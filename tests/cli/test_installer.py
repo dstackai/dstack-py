@@ -14,7 +14,8 @@ from tests import TestBase
 class TestInstaller(TestBase):
     def setUp(self):
         super().setUp()
-        del os.environ['JAVA_HOME']
+        if os.getenv("JAVA_HOME"):
+            del os.environ["JAVA_HOME"]
         self.temp = Path(tempfile.gettempdir()) / f"dstack-f{uuid4()}"
         self.temp.mkdir()
         self.base = self.temp / ".dstack"
@@ -124,6 +125,3 @@ class TestInstaller(TestBase):
             self.create_fake_file(fake_file / f"file{i}.txt")
 
         return Path(shutil.make_archive(base_name=archive_file, format=archive, root_dir=fake_file.parent))
-
-
-
