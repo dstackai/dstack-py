@@ -38,6 +38,8 @@ class TestApp(TestCase):
             return result.stdout.decode(), result.stderr.decode()
 
         def pip_install(self, path: Path):
+            print("bin directory")
+            print(list(self.path.rglob("*")))
             pip = self.path / "bin" / "pip"
 
             if path.suffix == ".whl":
@@ -50,6 +52,8 @@ class TestApp(TestCase):
             project_root = dp._find_project_root(wd)
             subprocess.run([sys.executable, "setup.py", "bdist_wheel"], cwd=project_root)
             wheel = project_root / "dist" / f"dstack-{dstack_version}-py3-none-any.whl"
+            print("dist directory:")
+            print(list((project_root / "dist").rglob("*")))
             self.pip_install(wheel)
 
     def test_first_example(self):
