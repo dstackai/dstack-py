@@ -40,12 +40,14 @@ class TestApp(TestCase):
         def pip_install(self, path: Path):
             print("bin directory")
             print(list(self.path.rglob("*")))
+            pip_exe = self.path / "Scripts" / "pip.exe"
             pip = self.path / "bin" / "pip"
+            pip_path = str(pip) if pip.exists() else str(pip_exe)
 
             if path.suffix == ".whl":
-                subprocess.run([str(pip), "install", str(path)])
+                subprocess.run([pip_path, "install", str(path)])
             else:
-                subprocess.run([str(pip), "install", "-r", str(path)])
+                subprocess.run([pip_path, "install", "-r", str(path)])
 
         def install_dstack(self):
             wd = dp._working_directory()
