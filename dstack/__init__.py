@@ -1,5 +1,5 @@
 import base64
-from typing import Optional, Dict, Any, Callable
+import typing as ty
 from functools import wraps
 from deprecation import deprecated
 
@@ -14,11 +14,11 @@ from dstack.stack import EncryptionMethod, NoEncryption, StackFrame, merge_or_no
 from dstack.application import Application
 
 
-def push(stack: str, obj, description: Optional[str] = None,
-         access: Optional[str] = None,
-         meta: Optional[FrameMeta] = None,
-         params: Optional[Dict] = None,
-         encoder: Optional[Encoder[Any]] = None,
+def push(stack: str, obj, description: ty.Optional[str] = None,
+         access: ty.Optional[str] = None,
+         meta: ty.Optional[FrameMeta] = None,
+         params: ty.Optional[ty.Dict] = None,
+         encoder: ty.Optional[Encoder[ty.Any]] = None,
          profile: str = "default",
          **kwargs) -> PushResult:
     """Create a frame in the stack, commits and pushes data in a single operation.
@@ -48,11 +48,11 @@ def push(stack: str, obj, description: Optional[str] = None,
 
 
 @deprecated(details="Use push instead")
-def push_frame(stack: str, obj, description: Optional[str] = None,
-               access: Optional[str] = None,
-               message: Optional[str] = None,
-               params: Optional[Dict] = None,
-               encoder: Optional[Encoder[Any]] = None,
+def push_frame(stack: str, obj, description: ty.Optional[str] = None,
+               access: ty.Optional[str] = None,
+               message: ty.Optional[str] = None,
+               params: ty.Optional[ty.Dict] = None,
+               encoder: ty.Optional[Encoder[ty.Any]] = None,
                profile: str = "default",
                **kwargs) -> PushResult:
     """Create a frame in the stack, commits and pushes data in a single operation.
@@ -60,14 +60,14 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
     Args:
         stack: A stack you want to commit and push to.
         obj: Object to commit and push, e.g. plot.
-        description: Optional description of the object.
+        description: ty.Optional description of the object.
         access: Access level for the stack. It may be public, private or None. It is None by default, so it will be
                 default access level in user's settings.
         message: Push message to describe what's new in this revision.
-        params: Optional parameters.
+        params: ty.Optional parameters.
         encoder: Specify a handler to handle the object, by default `AutoHandler` will be used.
         profile: Profile you want to use, i.e. username and token. Default profile is 'default'.
-        **kwargs: Optional parameters is an alternative to params. If both are present this one
+        **kwargs: ty.Optional parameters is an alternative to params. If both are present this one
             will be merged into params.
     Raises:
         ServerException: If server returns something except HTTP 200, e.g. in the case of authorization failure.
@@ -78,7 +78,7 @@ def push_frame(stack: str, obj, description: Optional[str] = None,
 
 def frame(stack: str,
           profile: str = "default",
-          access: Optional[str] = None,
+          access: ty.Optional[str] = None,
           auto_push: bool = False,
           check_access: bool = True) -> StackFrame:
     """Create a new stack frame. The method also checks access to specified stack.
@@ -131,7 +131,7 @@ def frame(stack: str,
 @deprecated(details="Use frame instead")
 def create_frame(stack: str,
                  profile: str = "default",
-                 access: Optional[str] = None,
+                 access: ty.Optional[str] = None,
                  auto_push: bool = False,
                  check_access: bool = True) -> StackFrame:
     """Create a new stack frame. The method also checks access to specified stack.
@@ -176,7 +176,7 @@ def create_frame(stack: str,
     return frame(stack, profile, access, auto_push, check_access)
 
 
-def _create_frame(context: Context, access: Optional[str] = None, auto_push: bool = False,
+def _create_frame(context: Context, access: ty.Optional[str] = None, auto_push: bool = False,
                   check_access: bool = True) -> StackFrame:
     frame = StackFrame(context,
                        access=access,
@@ -188,12 +188,12 @@ def _create_frame(context: Context, access: Optional[str] = None, auto_push: boo
     return frame
 
 
-# def _push(context: Context, obj: Any,
-#           description: Optional[str] = None,
-#           access: Optional[str] = None,
-#           message: Optional[str] = None,
-#           params: Optional[Dict] = None,
-#           encoder: Optional[Encoder[Any]] = None,
+# def _push(context: Context, obj: ty.Any,
+#           description: ty.Optional[str] = None,
+#           access: ty.Optional[str] = None,
+#           message: ty.Optional[str] = None,
+#           params: ty.Optional[ty.Dict] = None,
+#           encoder: ty.Optional[Encoder[ty.Any]] = None,
 #           **kwargs) -> PushResult:
 #     frame = _create_frame(context,
 #                           access=access,
@@ -207,7 +207,7 @@ def get_encryption(profile: Profile) -> EncryptionMethod:
 
 
 def pull_data(context: Context,
-              params: Optional[Dict] = None, **kwargs) -> FrameData:
+              params: ty.Optional[ty.Dict] = None, **kwargs) -> FrameData:
     path = context.stack_path()
     params = merge_or_none(params, kwargs)
     res = context.protocol.pull(path, context.profile.token, params)
@@ -226,16 +226,16 @@ def pull_data(context: Context,
 # TODO: Support caching
 def pull(stack: str,
          profile: str = "default",
-         params: Optional[Dict] = None,
-         decoder: Optional[Decoder[Any]] = None,
-         **kwargs) -> Any:
+         params: ty.Optional[ty.Dict] = None,
+         decoder: ty.Optional[Decoder[ty.Any]] = None,
+         **kwargs) -> ty.Any:
     return _pull(create_context(stack, profile), params, decoder, **kwargs)
 
 
 def _pull(context: Context,
-          params: Optional[Dict] = None,
-          decoder: Optional[Decoder[Any]] = None,
-          **kwargs) -> Any:
+          params: ty.Optional[ty.Dict] = None,
+          decoder: ty.Optional[Decoder[ty.Any]] = None,
+          **kwargs) -> ty.Any:
     decoder = decoder or AutoHandler()
     decoder.set_context(context)
     return decoder.decode(pull_data(context, params, **kwargs))
@@ -247,12 +247,12 @@ def create_context(stack: str, profile: str = "default") -> Context:
     return Context(stack, profile, protocol)
 
 
-def tab(title: Optional[str] = None) -> DecoratedValue:
+def tab(title: ty.Optional[str] = None) -> DecoratedValue:
     class Tab(DecoratedValue):
-        def __init__(self, title: Optional[str] = None):
+        def __init__(self, title: ty.Optional[str] = None):
             self.title = title
 
-        def decorate(self) -> Dict[str, Any]:
+        def decorate(self) -> ty.Dict[str, ty.Any]:
             decorated = {"type": "tab"}
 
             if self.title:
@@ -263,8 +263,9 @@ def tab(title: Optional[str] = None) -> DecoratedValue:
     return Tab(title)
 
 
-def app(handler: Callable, **kwargs):
-    return Application(handler, **kwargs)
+def app(handler: ty.Callable, depends: ty.Optional[ty.Union[str, ty.List[str]]] = None,
+        requirements: ty.Optional[str] = None, project: bool = False, **kwargs):
+    return Application(handler, depends, requirements, project, **kwargs)
 
 
 def default_hash_func(*args, **kwargs):

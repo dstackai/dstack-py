@@ -2,31 +2,33 @@ import inspect
 import sys
 import typing as ty
 from pathlib import Path
+from types import ModuleType
 
 from dstack.application.dependencies import Dependency, RequirementsDependency, ProjectDependency, ModuleDependency, \
     PackageDependency
 
 
 class Application:
-    def __init__(self, handler, **kwargs):
-        self.controls = {k: v for k, v in kwargs.items() if k not in ["requirements", "depends", "project"]}
-        self.kwargs = {k: v for k, v in kwargs.items() if k in ["requirements", "depends", "project"]}
+    def __init__(self, handler,
+                 depends: ty.Optional[ty.Union[str, ModuleType, ty.List[ty.Union[str, ModuleType]]]] = None,
+                 requirements: ty.Optional[str] = None, project: bool = False, **kwargs):
+        self.controls = kwargs
+        self.depends = depends
+        self.requirements = requirements
+        self.project = project
         self.handler = self.decorator(handler)
 
     def dep(self) -> ty.List[Dependency]:
         result = []
 
-        requirements = self.kwargs.get("requirements")
-        if requirements:
-            result.append(RequirementsDependency(Path(requirements)))
+        if self.requirements:
+            result.append(RequirementsDependency(Path(self.requirements)))
 
-        project = self.kwargs.get("project")
-        if project:
+        if self.project:
             result.append(ProjectDependency())
 
-        depends = self.kwargs.get("depends")
-        if depends:
-            for d in depends:
+        if self.depends:
+            for d in self.depends:
                 if inspect.ismodule(d):
                     result.append(ModuleDependency(d))
                 else:
