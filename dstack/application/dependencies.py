@@ -165,7 +165,7 @@ def _collect_sources(root: Path, path: Path) -> ty.List[Source]:
 def _get_sources_for(prefix: str) -> ty.List[Source]:
     root = _project_root()
     project = _collect_sources(root, root)
-    return [source for source in project if str(source.relative).startswith(prefix.replace(".", "/"))]
+    return [source for source in project if str(source.relative).startswith(prefix.replace(".", os.path.sep))]
 
 
 class ProjectDependency(Dependency):

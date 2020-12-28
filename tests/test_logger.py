@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -28,14 +29,12 @@ class TestLogger(TestBase):
         self.assertFalse(log.debug(test="test"))
 
     def test_log_to_file(self):
-        filename = "/tmp/test/dstack.log"
-        if Path(filename).exists():
-            os.remove(filename)
-        my_logger = log.FileLogger(filename)
+        file = Path(tempfile.gettempdir()) / "dstack.log"
+        my_logger = log.FileLogger(str(file.resolve()))
         log.enable(logger=my_logger)
         log.debug(message="test message")
         log.debug(message="second message")
-        with open(filename, "r") as f:
+        with open(file.resolve(), "r") as f:
             lines = f.readlines()
         d0 = json.loads(lines[0])
         d1 = json.loads(lines[1])
@@ -48,12 +47,14 @@ class TestLogger(TestBase):
         log.debug(data=None, extra=None)
 
     def test_default_log_file_location(self):
-        config = YamlConfig({}, Path("/tmp/test/.dstack/config.yaml"))
+        dstack_path = Path(tempfile.gettempdir()) / ".dstack"
+        config_path = dstack_path / "config.yaml"
+        config = YamlConfig({}, config_path.resolve())
         configure(config)
         log.enable()
         if isinstance(log.get_logger(), log.FileLogger):
-            self.assertEqual(f"/tmp/test/.dstack/logs/{datetime.now().strftime('%Y-%m-%d.log')}",
-                             log.get_logger().filename)
+            expected_path = dstack_path / "logs" / datetime.now().strftime('%Y-%m-%d.log')
+            self.assertEqual(str(expected_path.resolve()), log.get_logger().filename)
         else:
             self.fail("logger must be a FileLogger")
 
