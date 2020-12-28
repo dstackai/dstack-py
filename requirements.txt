@@ -9,3 +9,5 @@ requests
 scikit-learn
 tqdm
 twine
+torch
+numpy
