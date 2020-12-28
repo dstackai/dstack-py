@@ -14,7 +14,7 @@ from tests import TestBase
 class TestInstaller(TestBase):
     def setUp(self):
         super().setUp()
-        os.unsetenv("JAVA_HOME")
+        del os.environ['JAVA_HOME']
         self.temp = Path(tempfile.gettempdir()) / f"dstack-f{uuid4()}"
         self.temp.mkdir()
         self.base = self.temp / ".dstack"
