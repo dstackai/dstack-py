@@ -1,4 +1,3 @@
-import os
 import shutil
 import subprocess
 import sys
@@ -32,8 +31,10 @@ class TestApp(TestCase):
             shutil.rmtree(str(self.path))
 
         def run_script(self, cmd: ty.List[str], working_directory: Path) -> ty.Tuple[str, str]:
+            python_exe = self.path / "Scripts" / "python.exe"
             python = self.path / "bin" / "python"
-            result = subprocess.run([str(python)] + cmd, cwd=working_directory, stdout=subprocess.PIPE,
+            python_path = str(python) if python.exists() else str(python_exe)
+            result = subprocess.run([python_path] + cmd, cwd=working_directory, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             return result.stdout.decode(), result.stderr.decode()
 
