@@ -1,0 +1,11 @@
+cloudpickle
+deprecation
+matplotlib
+packaging
+pandas
+PyYAML>=5.3.1
+requests
+scikit-learn
+tensorflow
+tqdm
+twine
