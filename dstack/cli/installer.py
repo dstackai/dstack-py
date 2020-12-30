@@ -175,7 +175,7 @@ class Installer(object):
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
 
-        data.data.to_file(path)
+        data.data.to_file(path, show_progress=True)
 
     def _jdk_path(self, check_path_exist: bool = True) -> Optional[Path]:
         path = self.base_path / "jdk"

@@ -115,10 +115,13 @@ class Content(ABC):
     def base64value(self) -> str:
         return base64.b64encode(self.value()).decode()
 
-    def to_file(self, path: Path):
+    def to_file(self, path: Path, show_progress: bool):
         chunk_size = 4096
-        progress = Progress(total=self.length(), desc=f"Downloading {path.name}")
-        in_stream = StreamWithProgress(self.stream(), progress)
+        if show_progress:
+            progress = Progress(total=self.length(), desc=f"Downloading {path.name}")
+            in_stream = StreamWithProgress(self.stream(), progress)
+        else:
+            in_stream = self.stream()
         with path.open("wb") as f:
             for chunk in self._generate(in_stream, chunk_size):
                 f.write(chunk)

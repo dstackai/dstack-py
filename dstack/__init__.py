@@ -1,12 +1,13 @@
 import base64
+import os
 import typing as ty
 from functools import wraps
 from deprecation import deprecated
 
 from dstack.auto import AutoHandler
 from dstack.config import Config, ConfigFactory, YamlConfigFactory, \
-    from_yaml_file, ConfigurationError, get_config, Profile
-from dstack.content import StreamContent, BytesContent, MediaType
+    from_yaml_file, ConfigurationError, get_config, Profile, _get_config_path
+from dstack.content import StreamContent, BytesContent, MediaType, FileContent
 from dstack.context import Context
 from dstack.handler import Encoder, Decoder, T, DecoratedValue
 from dstack.protocol import Protocol, JsonProtocol, MatchError, create_protocol
@@ -206,16 +207,23 @@ def get_encryption(profile: Profile) -> EncryptionMethod:
     return NoEncryption()
 
 
+# TODO: Write tests that ensures that cache works
 def pull_data(context: Context,
               params: ty.Optional[ty.Dict] = None, **kwargs) -> FrameData:
     path = context.stack_path()
     params = merge_or_none(params, kwargs)
-    res = context.protocol.pull(path, context.profile.token, params)
+    frame, index, res = context.protocol.pull(path, context.profile.token, params)
     attach = res["attachment"]
 
     data = \
         BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
             StreamContent(*context.protocol.download(attach["download_url"]))
+
+    cache_path = _get_config_path().parent / "cache" / os.sep.join(path.split("/")) / frame / str(index)
+    if not cache_path.exists():
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        data.to_file(cache_path, show_progress=False)
+    data = FileContent(cache_path)
 
     media_type = MediaType(attach["content_type"], attach.get("application", None))
     return FrameData(data, media_type, attach.get("description", None),
@@ -223,7 +231,6 @@ def pull_data(context: Context,
 
 
 # TODO: Support frame and attach_index
-# TODO: Support caching
 def pull(stack: str,
          profile: str = "default",
          params: ty.Optional[ty.Dict] = None,

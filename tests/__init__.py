@@ -1,6 +1,6 @@
 import copy
 import unittest
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from dstack.config import Profile, InPlaceConfig, configure
 from dstack.protocol import Protocol, ProtocolFactory, setup_protocol, StackNotFoundError
@@ -19,8 +19,10 @@ class TestProtocol(Protocol):
     def access(self, stack: str, token: str) -> Dict:
         return self.handle({"stack": stack}, token)
 
-    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
-        attachments = self.get_data(stack)["attachments"]
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Tuple[str, int, Dict]:
+        data = self.get_data(stack)
+        frame = data["id"]
+        attachments = data["attachments"]
         for index, attach in enumerate(attachments):
             if (params is None and (len(attachments) == 1 or "params" not in attach)) or \
                     set(attach["params"].items()) == set(params.items()):
@@ -28,7 +30,7 @@ class TestProtocol(Protocol):
                 attach1 = copy.deepcopy(attach)
                 attach1["data"] = d.base64value()
                 attach["data"] = d
-                return {"attachment": attach1}
+                return frame, index, {"attachment": attach1}
 
     def download(self, url):
         raise NotImplementedError()

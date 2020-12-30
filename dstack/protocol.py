@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, IO
+from typing import Dict, Optional, IO, Tuple
 
 import requests
 
@@ -35,7 +35,7 @@ class Protocol(ABC):
         pass
 
     @abstractmethod
-    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Tuple[str, int, Dict]:
         pass
 
     @abstractmethod
@@ -77,7 +77,7 @@ class JsonProtocol(Protocol):
     def access(self, stack: str, token: str) -> Dict:
         return self.do_request("/stacks/access", {"stack": stack}, token)
 
-    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Dict:
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Tuple[str, int, Dict]:
         empty = params is None
         params = {} if empty else params
         url = f"/stacks/{stack}"
@@ -87,7 +87,7 @@ class JsonProtocol(Protocol):
             if (len(attachments) == 1 and empty) or set(attach["params"].items()) == set(params.items()):
                 frame = res["stack"]["head"]["id"]
                 attach_url = f"/attachs/{stack}/{frame}/{index}?download=true"
-                return self.do_request(attach_url, None, token=token, method="GET")
+                return frame, index, self.do_request(attach_url, None, token=token, method="GET")
         raise MatchError(params)
 
     def do_request(self, endpoint: str, data: Optional[Dict],
