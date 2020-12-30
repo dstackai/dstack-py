@@ -208,26 +208,39 @@ def get_encryption(profile: Profile) -> EncryptionMethod:
 
 
 # TODO: Write tests that ensures that cache works
-def pull_data(context: Context,
-              params: ty.Optional[ty.Dict] = None, **kwargs) -> FrameData:
+def pull_data(context: Context, params: ty.Optional[ty.Dict] = None, **kwargs) -> FrameData:
     path = context.stack_path()
     params = merge_or_none(params, kwargs)
-    frame, index, res = context.protocol.pull(path, context.profile.token, params)
+    frame, index, length, res = context.protocol.pull(path, context.profile.token, params)
     attach = res["attachment"]
 
-    data = \
-        BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
-            StreamContent(*context.protocol.download(attach["download_url"]))
-
-    cache_path = _get_config_path().parent / "cache" / os.sep.join(path.split("/")) / frame / str(index)
-    if not cache_path.exists():
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        data.to_file(cache_path, show_progress=False)
-    data = FileContent(cache_path)
+    data = _cache_data(attach, context, frame, index, length, path)
 
     media_type = MediaType(attach["content_type"], attach.get("application", None))
     return FrameData(data, media_type, attach.get("description", None),
                      attach.get("params", None), attach.get("settings", None))
+
+
+def _cache_data(attach, context, frame, index, length, path):
+    cache_dir = _get_config_path().parent / "cache"
+    file = cache_dir / "files" / os.sep.join(path.split("/")) / frame / str(index)
+    meta = cache_dir / "meta" / os.sep.join(path.split("/")) / frame / str(index)
+    if not file.exists() or not meta.exists() or file.stat().st_size != length:
+        data = BytesContent(base64.b64decode(attach["data"])) if "data" in attach else \
+            StreamContent(*context.protocol.download(attach["download_url"]))
+
+        if file.exists():
+            os.remove(file)
+        if meta.exists():
+            os.remove(meta)
+
+        file.parent.mkdir(parents=True, exist_ok=True)
+        data.to_file(file, show_progress=False)
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        open(meta, 'a').close()
+
+    data = FileContent(file)
+    return data
 
 
 # TODO: Support frame and attach_index

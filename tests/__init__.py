@@ -19,7 +19,7 @@ class TestProtocol(Protocol):
     def access(self, stack: str, token: str) -> Dict:
         return self.handle({"stack": stack}, token)
 
-    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Tuple[str, int, Dict]:
+    def pull(self, stack: str, token: Optional[str], params: Optional[Dict]) -> Tuple[str, int, int, Dict]:
         data = self.get_data(stack)
         frame = data["id"]
         attachments = data["attachments"]
@@ -30,7 +30,7 @@ class TestProtocol(Protocol):
                 attach1 = copy.deepcopy(attach)
                 attach1["data"] = d.base64value()
                 attach["data"] = d
-                return frame, index, {"attachment": attach1}
+                return frame, index, d.length(), {"attachment": attach1}
 
     def download(self, url):
         raise NotImplementedError()
